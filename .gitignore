@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+venv/
+ENV/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+android-app/android/app/debug
+android-app/android/app/profile
+android-app/android/app/release
+android-app/ios/Pods/
+android-app/ios/.symlinks/
+android-app/macos/Flutter/ephemeral/
+android-app/windows/flutter/ephemeral/
+android-app/linux/flutter/ephemeral/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

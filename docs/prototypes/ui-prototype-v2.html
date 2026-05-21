@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Smart Price AI - UI 原型 v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        :root {
+            --bg: #F5F5F7;
+            --surface: #FFFFFF;
+            --text: #1A1A2E;
+            --text-secondary: #8E8E93;
+            --accent: #00C9A7;
+            --accent-soft: rgba(0, 201, 167, 0.15);
+            --black: #000000;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: #d1d1d6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* iPhone 14 Pro Max 尺寸 */
+        .phone {
+            width: 100%;
+            max-width: 430px;
+            height: 932px;
+            background: var(--bg);
+            border-radius: 54px;
+            box-shadow: 0 30px 100px rgba(0,0,0,0.3), 0 0 0 14px #1a1a1a;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        /* 刘海 */
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 126px;
+            height: 37px;
+            background: #1a1a1a;
+            border-radius: 0 0 24px 24px;
+            z-index: 1000;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            padding-top: 52px;
+            scrollbar-width: none;
+        }
+        .screen::-webkit-scrollbar { display: none; }
+
+        .page { display: none; width: 100%; min-height: 100%; }
+        .page.active { display: block; }
+
+        /* ========== 公共组件 ========== */
+        .pill-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 32px;
+            border-radius: 100px;
+            font-size: 17px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .pill-btn:active { transform: scale(0.96); }
+        .pill-btn-dark {
+            background: var(--black);
+            color: #fff;
+        }
+        .pill-btn-light {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .section-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding: 0 24px;
+        }
+
+        .page-title {
+            font-size: 34px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -1px;
+            line-height: 1.1;
+            padding: 0 24px;
+            margin-bottom: 8px;
+        }
+
+        /* 底部黑色导航/输入栏 */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--black);
+            padding: 16px 24px 36px;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .bottom-input {
+            flex: 1;
+            background: rgba(255,255,255,0.12);
+            border: none;
+            border-radius: 100px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-family: inherit;
+            color: #fff;
+            outline: none;
+        }
+        .bottom-input::placeholder { color: rgba(255,255,255,0.4); }
+        .bottom-send {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .nav-dots {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 200;
+        }
+        .nav-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            width: 32px;
+            border-radius: 5px;
+        }
+
+        /* ========== Page 1: 启动页 ========== */
+        .launch-page {
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 60px 28px 48px;
+            position: relative;
+            overflow: hidden;
+        }
+        .launch-gradient {
+            position: absolute;
+            top: -20%;
+            right: -30%;
+            width: 140%;
+            height: 70%;
+            background: radial-gradient(ellipse at 70% 30%, rgba(0,201,167,0.25) 0%, rgba(0,201,167,0.05) 50%, transparent 70%);
+            pointer-events: none;
+        }
+        .launch-gradient-2 {
+            position: absolute;
+            bottom: -10%;
+            left: -20%;
+            width: 100%;
+            height: 50%;
+            background: radial-gradient(ellipse at 30% 70%, rgba(0,180,216,0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .launch-content {
+            position: relative;
+            z-index: 1;
+        }
+        .launch-eyebrow {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .launch-title {
+            font-size: 56px;
+            font-weight: 900;
+            color: var(--text);
+            line-height: 1.05;
+            letter-spacing: -2.5px;
+            margin-bottom: 20px;
+        }
+        .launch-title span {
+            display: block;
+        }
+        .launch-desc {
+            font-size: 17px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 280px;
+        }
+        .launch-bottom {
+            position: relative;
+            z-index: 1;
+        }
+        .launch-btn-icon {
+            font-size: 20px;
+        }
+
+        /* ========== Page 2: 首页 ========== */
+        .home-page {
+            padding-bottom: 120px;
+        }
+        .home-header {
+            padding: 8px 24px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .home-greeting {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -1px;
+        }
+        .home-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .search-box {
+            margin: 0 24px 28px;
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .search-icon {
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+        .search-text {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .quick-tags {
+            display: flex;
+            gap: 10px;
+            padding: 0 24px;
+            margin-bottom: 32px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .quick-tags::-webkit-scrollbar { display: none; }
+        .quick-tag {
+            flex-shrink: 0;
+            padding: 10px 18px;
+            border-radius: 100px;
+            background: var(--surface);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.04);
+            cursor: pointer;
+        }
+
+        .camera-hero {
+            margin: 0 24px 32px;
+            height: 380px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 50%, #80deea 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 28px;
+            cursor: pointer;
+        }
+        .camera-hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            right: -10%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(0,201,167,0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .camera-hero-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+        .camera-hero-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
+        }
+        .camera-hero-sub {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .history-section {
+            margin-bottom: 24px;
+        }
+        .history-scroll {
+            display: flex;
+            gap: 16px;
+            padding: 0 24px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .history-scroll::-webkit-scrollbar { display: none; }
+        .history-card {
+            flex-shrink: 0;
+            width: 140px;
+            height: 180px;
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .history-card-img {
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(135deg, #ffecd2, #fcb69f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+        }
+        .history-card-info {
+            padding: 12px;
+        }
+        .history-card-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-card-price {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-top: 4px;
+        }
+
+        /* ========== Page 3: 识别结果 ========== */
+        .result-page {
+            padding-bottom: 120px;
+        }
+        .result-hero {
+            position: relative;
+            height: 420px;
+            margin: 0 24px 24px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        .result-hero-img {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 120px;
+            opacity: 0.4;
+        }
+        .result-hero-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 28px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+        }
+        .result-hero-name {
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .result-hero-tags {
+            display: flex;
+            gap: 8px;
+        }
+        .result-hero-tag {
+            padding: 6px 14px;
+            border-radius: 100px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .suggestion-section {
+            margin-bottom: 24px;
+        }
+        .suggestion-scroll {
+            display: flex;
+            gap: 16px;
+            padding: 0 24px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .suggestion-scroll::-webkit-scrollbar { display: none; }
+        .suggestion-card {
+            flex-shrink: 0;
+            width: 260px;
+            height: 160px;
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .suggestion-card:active { transform: scale(0.97); }
+        .suggestion-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .suggestion-card-icon {
+            font-size: 36px;
+        }
+        .suggestion-card-arrow {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        .suggestion-card-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+        .suggestion-card-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .insight-card {
+            margin: 0 24px 24px;
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .insight-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .insight-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #0077B6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .insight-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .insight-badge {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            background: var(--accent-soft);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .insight-text {
+            font-size: 15px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .insight-highlight {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* ========== Page 4: 比价列表 ========== */
+        .compare-page {
+            padding-bottom: 120px;
+        }
+        .compare-header {
+            padding: 8px 24px 20px;
+        }
+        .compare-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .compare-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -1px;
+            margin-top: 4px;
+        }
+
+        .filter-scroll {
+            display: flex;
+            gap: 10px;
+            padding: 0 24px 20px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .filter-scroll::-webkit-scrollbar { display: none; }
+        .filter-chip {
+            flex-shrink: 0;
+            padding: 10px 18px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--surface);
+            color: var(--text-secondary);
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .filter-chip.active {
+            background: var(--black);
+            color: #fff;
+        }
+
+        .product-list {
+            padding: 0 24px;
+        }
+        .product-item {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .product-item:active { transform: scale(0.98); }
+        .product-item-img {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+        }
+        .product-item-info {
+            padding: 20px;
+        }
+        .product-item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .product-item-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.3;
+            flex: 1;
+            padding-right: 12px;
+        }
+        .product-item-platform {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .platform-jd { background: #e4393c; color: #fff; }
+        .platform-tb { background: #ff5000; color: #fff; }
+        .platform-pdd { background: #e02e24; color: #fff; }
+        .product-item-price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .product-item-price {
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--text);
+            letter-spacing: -1px;
+        }
+        .product-item-original {
+            font-size: 15px;
+            color: var(--text-secondary);
+            text-decoration: line-through;
+        }
+        .product-item-save {
+            font-size: 13px;
+            font-weight: 700;
+            color: #e74c3c;
+            background: rgba(231,76,60,0.08);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+        .product-item-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ========== Page 5: AI 导购 ========== */
+        .chat-page {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: var(--bg);
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .msg-bubble {
+            max-width: 82%;
+            padding: 14px 18px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.55;
+            animation: msgPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes msgPop {
+            from { transform: scale(0.9) translateY(10px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .msg-user {
+            align-self: flex-end;
+            background: var(--black);
+            color: #fff;
+            border-bottom-right-radius: 6px;
+        }
+        .msg-ai {
+            align-self: flex-start;
+            background: var(--surface);
+            color: var(--text);
+            border-bottom-left-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .report-card-v2 {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin: 8px 0;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+            animation: msgPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .report-v2-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .report-v2-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #0077B6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .report-v2-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .report-v2-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .report-v2-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+        .report-v2-row:last-child { border-bottom: none; }
+        .report-v2-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .report-v2-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .report-v2-value.accent {
+            color: var(--accent);
+            font-size: 18px;
+        }
+        .report-v2-suggestion {
+            margin-top: 12px;
+            padding: 14px;
+            background: var(--accent-soft);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            color: #007a65;
+            line-height: 1.5;
+        }
+        .report-v2-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .report-v2-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s;
+        }
+        .report-v2-btn:active { transform: scale(0.97); }
+        .report-v2-btn-primary {
+            background: var(--black);
+            color: #fff;
+        }
+        .report-v2-btn-secondary {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .prototype-note {
+            margin-top: 24px;
+            text-align: center;
+            color: #8E8E93;
+            font-size: 14px;
+            max-width: 430px;
+            line-height: 1.6;
+        }
+        .prototype-note code {
+            background: #f0f0f0;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone">
+        <div class="notch"></div>
+
+        <div class="screen">
+            <!-- ========== Page 1: 启动页 ========== -->
+            <div class="page launch-page active" id="page1">
+                <div class="launch-gradient"></div>
+                <div class="launch-gradient-2"></div>
+                <div class="launch-content">
+                    <div class="launch-eyebrow">Smart Price AI</div>
+                    <div class="launch-title">
+                        <span>拍一张照</span>
+                        <span>找到</span>
+                        <span>最优价</span>
+                    </div>
+                    <div class="launch-desc">
+                        AI 识别商品、跨平台比价、智能导购，让每一次购物都物有所值
+                    </div>
+                </div>
+                <div class="launch-bottom">
+                    <button class="pill-btn pill-btn-dark" onclick="goPage(2)">
+                        <span class="launch-btn-icon">📷</span>
+                        开始拍摄
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========== Page 2: 首页 ========== -->
+            <div class="page home-page" id="page2">
+                <div class="home-header">
+                    <div class="home-greeting">Hi, Kevin</div>
+                    <div class="home-avatar">😎</div>
+                </div>
+
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <span class="search-text">搜索商品或输入链接...</span>
+                </div>
+
+                <div class="quick-tags">
+                    <div class="quick-tag">👟 运动鞋</div>
+                    <div class="quick-tag">📱 数码</div>
+                    <div class="quick-tag">👔 服饰</div>
+                    <div class="quick-tag">💄 美妆</div>
+                    <div class="quick-tag">🏠 家居</div>
+                </div>
+
+                <div class="camera-hero" onclick="goPage(3)">
+                    <div class="camera-hero-icon">📷</div>
+                    <div class="camera-hero-title">拍照识物</div>
+                    <div class="camera-hero-sub">对准商品，AI 自动识别</div>
+                </div>
+
+                <div class="section-label">最近识别</div>
+                <div class="history-scroll">
+                    <div class="history-card">
+                        <div class="history-card-img">👟</div>
+                        <div class="history-card-info">
+                            <div class="history-card-title">Nike Air Max</div>
+                            <div class="history-card-price">¥749</div>
+                        </div>
+                    </div>
+                    <div class="history-card">
+                        <div class="history-card-img" style="background:linear-gradient(135deg,#a8edea,#fed6e3);">📱</div>
+                        <div class="history-card-info">
+                            <div class="history-card-title">iPhone 15</div>
+                            <div class="history-card-price">¥5,999</div>
+                        </div>
+                    </div>
+                    <div class="history-card">
+                        <div class="history-card-img" style="background:linear-gradient(135deg,#ffecd2,#fcb69f);">👜</div>
+                        <div class="history-card-info">
+                            <div class="history-card-title">Coach 托特包</div>
+                            <div class="history-card-price">¥1,299</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:40px;"></div>
+            </div>
+
+            <!-- ========== Page 3: 识别结果 ========== -->
+            <div class="page result-page" id="page3">
+                <div class="result-hero">
+                    <div class="result-hero-img">👟</div>
+                    <div class="result-hero-overlay">
+                        <div class="result-hero-name">Nike Air Max 90</div>
+                        <div class="result-hero-tags">
+                            <span class="result-hero-tag">黑色</span>
+                            <span class="result-hero-tag">42 码</span>
+                            <span class="result-hero-tag">运动鞋</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-label">下一步</div>
+                <div class="suggestion-scroll">
+                    <div class="suggestion-card" onclick="goPage(4)">
+                        <div class="suggestion-card-top">
+                            <span class="suggestion-card-icon">🔍</span>
+                            <span class="suggestion-card-arrow">→</span>
+                        </div>
+                        <div>
+                            <div class="suggestion-card-title">查看同款低价</div>
+                            <div class="suggestion-card-desc">跨平台比价，找到最优价</div>
+                        </div>
+                    </div>
+                    <div class="suggestion-card">
+                        <div class="suggestion-card-top">
+                            <span class="suggestion-card-icon">🏪</span>
+                            <span class="suggestion-card-arrow">→</span>
+                        </div>
+                        <div>
+                            <div class="suggestion-card-title">官方旗舰店</div>
+                            <div class="suggestion-card-desc">品质保障，正品保证</div>
+                        </div>
+                    </div>
+                    <div class="suggestion-card">
+                        <div class="suggestion-card-top">
+                            <span class="suggestion-card-icon">📈</span>
+                            <span class="suggestion-card-arrow">→</span>
+                        </div>
+                        <div>
+                            <div class="suggestion-card-title">价格走势</div>
+                            <div class="suggestion-card-desc">历史分析，把握时机</div>
+                        </div>
+                    </div>
+                    <div class="suggestion-card">
+                        <div class="suggestion-card-top">
+                            <span class="suggestion-card-icon">✨</span>
+                            <span class="suggestion-card-arrow">→</span>
+                        </div>
+                        <div>
+                            <div class="suggestion-card-title">相似推荐</div>
+                            <div class="suggestion-card-desc">发现更多相似好物</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insight-card">
+                    <div class="insight-header">
+                        <div class="insight-avatar">🤖</div>
+                        <div>
+                            <div class="insight-name">AI 导购</div>
+                        </div>
+                        <span class="insight-badge">建议</span>
+                    </div>
+                    <div class="insight-text">
+                        这款 Nike Air Max 90 黑色 42 码当前在 <span class="insight-highlight">京东售价 ¥749</span>，为 90 天最低价。建议立即购买，预计 14 天内涨价概率 73%。
+                    </div>
+                </div>
+
+                <div style="height:40px;"></div>
+            </div>
+
+            <!-- ========== Page 4: 比价列表 ========== -->
+            <div class="page compare-page" id="page4">
+                <div class="compare-header">
+                    <div class="compare-subtitle">Nike Air Max 90 黑色 42码</div>
+                    <div class="compare-title">找到 6 个结果</div>
+                </div>
+
+                <div class="filter-scroll">
+                    <div class="filter-chip active">综合推荐</div>
+                    <div class="filter-chip">价格从低</div>
+                    <div class="filter-chip">销量优先</div>
+                    <div class="filter-chip">好评率</div>
+                </div>
+
+                <div class="product-list">
+                    <div class="product-item">
+                        <div class="product-item-img">👟</div>
+                        <div class="product-item-info">
+                            <div class="product-item-top">
+                                <div class="product-item-name">Nike Air Max 90 黑色 运动鞋 42码 官方正品</div>
+                                <div class="product-item-platform platform-jd">京东</div>
+                            </div>
+                            <div class="product-item-price-row">
+                                <span class="product-item-price">¥749</span>
+                                <span class="product-item-original">¥899</span>
+                                <span class="product-item-save">省 ¥150</span>
+                            </div>
+                            <div class="product-item-meta">⭐ 4.9 · 月销 2000+ · 自营 · 包邮</div>
+                        </div>
+                    </div>
+
+                    <div class="product-item">
+                        <div class="product-item-img" style="background:linear-gradient(135deg,#a8edea,#fed6e3);">👟</div>
+                        <div class="product-item-info">
+                            <div class="product-item-top">
+                                <div class="product-item-name">Nike Air Max 90 黑色 42码 官方正品</div>
+                                <div class="product-item-platform platform-tb">淘宝</div>
+                            </div>
+                            <div class="product-item-price-row">
+                                <span class="product-item-price">¥799</span>
+                                <span class="product-item-original">¥959</span>
+                                <span class="product-item-save">省 ¥160</span>
+                            </div>
+                            <div class="product-item-meta">⭐ 4.8 · 月销 1500+ · 官方 · 七天退换</div>
+                        </div>
+                    </div>
+
+                    <div class="product-item">
+                        <div class="product-item-img" style="background:linear-gradient(135deg,#ffecd2,#fcb69f);">👟</div>
+                        <div class="product-item-info">
+                            <div class="product-item-top">
+                                <div class="product-item-name">Nike Air Max 90 黑色 42码 运动休闲鞋</div>
+                                <div class="product-item-platform platform-pdd">拼多多</div>
+                            </div>
+                            <div class="product-item-price-row">
+                                <span class="product-item-price">¥699</span>
+                                <span class="product-item-original">¥849</span>
+                                <span class="product-item-save">省 ¥150</span>
+                            </div>
+                            <div class="product-item-meta">⭐ 4.7 · 月销 3000+ · 百亿补贴 · 包邮</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:40px;"></div>
+            </div>
+
+            <!-- ========== Page 5: AI 导购 ========== -->
+            <div class="page chat-page" id="page5">
+                <div class="chat-messages">
+                    <div class="msg-bubble msg-user">有别的颜色吗？</div>
+                    <div class="msg-bubble msg-ai">
+                        同款 Nike Air Max 90 还有以下颜色可选，<strong>白色当前最低价 ¥699</strong>：<br><br>
+                        ⚪ 白色 · ¥699（最低价）<br>
+                        🔘 灰色 · ¥759<br>
+                        🔵 蓝色 · ¥789
+                    </div>
+                    <div class="msg-bubble msg-user">和 Adidas Ultraboost 比怎么样？</div>
+                    <div class="msg-bubble msg-ai">
+                        <strong>Air Max 90</strong> 偏缓震，适合日常通勤和轻度运动；<br>
+                        <strong>Ultraboost</strong> 偏回弹，更适合跑步。<br><br>
+                        你的主要使用场景是什么？我可以进一步推荐。
+                    </div>
+                    <div class="msg-bubble msg-user">这个价格值得买吗？</div>
+
+                    <div class="report-card-v2">
+                        <div class="report-v2-header">
+                            <div class="report-v2-avatar">🤖</div>
+                            <div>
+                                <div class="report-v2-title">AI 购物决策报告</div>
+                                <div class="report-v2-subtitle">基于 90 天历史数据分析</div>
+                            </div>
+                        </div>
+                        <div class="report-v2-row">
+                            <span class="report-v2-label">目标商品</span>
+                            <span class="report-v2-value">Nike Air Max 黑色 42码</span>
+                        </div>
+                        <div class="report-v2-row">
+                            <span class="report-v2-label">最优选择</span>
+                            <span class="report-v2-value accent">京东 ¥749</span>
+                        </div>
+                        <div class="report-v2-row">
+                            <span class="report-v2-label">历史对比</span>
+                            <span class="report-v2-value">低于 90 天均价 12%</span>
+                        </div>
+                        <div class="report-v2-row">
+                            <span class="report-v2-label">AI 建议</span>
+                            <span class="report-v2-value accent">建议立即购买</span>
+                        </div>
+                        <div class="report-v2-suggestion">
+                            当前价为 90 天最低价，且为官方旗舰店。预计 14 天内涨价概率 73%。
+                        </div>
+                        <div class="report-v2-actions">
+                            <button class="report-v2-btn report-v2-btn-primary">📤 分享报告</button>
+                            <button class="report-v2-btn report-v2-btn-secondary">💾 保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部输入栏 -->
+        <div class="bottom-bar">
+            <input type="text" class="bottom-input" placeholder="输入筛选条件或提问...">
+            <button class="bottom-send">➤</button>
+        </div>
+
+        <!-- 导航圆点 -->
+        <div class="nav-dots">
+            <div class="nav-dot active" onclick="goPage(1)"></div>
+            <div class="nav-dot" onclick="goPage(2)"></div>
+            <div class="nav-dot" onclick="goPage(3)"></div>
+            <div class="nav-dot" onclick="goPage(4)"></div>
+            <div class="nav-dot" onclick="goPage(5)"></div>
+        </div>
+    </div>
+
+    <div class="prototype-note">
+        <p>💡 按 <code>F12</code> → 设备切换 → 选择 <strong>iPhone 14 Pro Max (430×932)</strong></p>
+        <p style="margin-top:6px;">点击底部 5 个圆点切换页面 · 点击卡片跳转</p>
+    </div>
+
+    <script>
+        function goPage(n) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-dot').forEach(d => d.classList.remove('active'));
+            document.getElementById('page' + n).classList.add('active');
+            document.querySelectorAll('.nav-dot')[n-1].classList.add('active');
+        }
+    </script>
+</body>
+</html>
