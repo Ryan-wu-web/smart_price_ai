@@ -1,0 +1,300 @@
+import 'package:flutter/material.dart';
+import '../models/chat_message.dart';
+import '../models/product.dart';
+import '../services/api_service.dart';
+import '../utils/constants.dart';
+import '../widgets/bottom_input_bar.dart';
+import '../widgets/chat_bubble.dart';
+
+class ChatScreen extends StatefulWidget {
+  final String? initialMessage;
+  final Product? initialProduct;
+
+  const ChatScreen({super.key, this.initialMessage, this.initialProduct});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final List<ChatMessage> _messages = [];
+  final TextEditingController _inputController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  String? _sessionId;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _addWelcomeMessage();
+    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+      _sendMessage(widget.initialMessage!);
+    }
+    if (widget.initialProduct != null) {
+      _addProductMessage(widget.initialProduct!);
+    }
+  }
+
+  void _addWelcomeMessage() {
+    _messages.add(ChatMessage(
+      id: 'welcome',
+      text: '你好！我是你的 AI 购物助手。可以帮你比价、找优惠券、分析商品性价比。有什么可以帮你的？',
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+  }
+
+  void _addProductMessage(Product product) {
+    _messages.add(ChatMessage(
+      id: 'product_${product.id}',
+      text: '已选择商品：${product.name}（¥${product.price.toStringAsFixed(0)}）\n你想了解这款商品的什么信息？',
+      isUser: false,
+      timestamp: DateTime.now(),
+      action: 'product_selected',
+      actionData: product.toJson(),
+    ));
+    _scrollToBottom();
+  }
+
+  Future<void> _sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+
+    setState(() {
+      _messages.add(ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: text,
+        isUser: true,
+        timestamp: DateTime.now(),
+      ));
+      _isLoading = true;
+    });
+    _scrollToBottom();
+
+    final response = await ApiService().sendChat(
+      text,
+      sessionId: _sessionId,
+      context: context,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (response != null) {
+      final reply = response['reply']?.toString() ??
+          response['message']?.toString() ??
+          '抱歉，我没有理解您的问题。';
+      final newSessionId = response['session_id']?.toString() ??
+          response['sessionId']?.toString();
+      if (newSessionId != null) _sessionId = newSessionId;
+
+      setState(() {
+        _messages.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: reply,
+          isUser: false,
+          timestamp: DateTime.now(),
+          action: response['action']?.toString(),
+          actionData: response['action_data'] as Map<String, dynamic>? ??
+              response['actionData'] as Map<String, dynamic>?,
+        ));
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Widget _buildDecisionCard(Map<String, dynamic> data) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(Constants.largeRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Constants.brandColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.assignment_turned_in,
+                  size: 18,
+                  color: Constants.brandColor,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'AI 决策报告',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Constants.primaryTextColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (data['target_product'] != null)
+            _buildReportRow('目标商品', data['target_product'].toString()),
+          if (data['best_choice'] != null)
+            _buildReportRow('最优选择', data['best_choice'].toString()),
+          if (data['suggestion'] != null)
+            _buildReportRow('AI 建议', data['suggestion'].toString()),
+          if (data['savings'] != null)
+            _buildReportRow('预计节省', '¥${data['savings']}'),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // TODO: share report
+              },
+              icon: const Icon(Icons.share, size: 16),
+              label: const Text('分享报告'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.brandColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Constants.secondaryTextColor,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Constants.primaryTextColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Constants.backgroundColor,
+      appBar: AppBar(
+        backgroundColor: Constants.backgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Constants.primaryTextColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.smart_toy, color: Constants.brandColor, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'AI 购物助手',
+              style: TextStyle(
+                color: Constants.primaryTextColor,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: _messages.length,
+              itemBuilder: (_, index) {
+                final msg = _messages[index];
+                if (msg.action == 'report' && msg.actionData != null) {
+                  return _buildDecisionCard(msg.actionData!);
+                }
+                return ChatBubble(message: msg);
+              },
+            ),
+          ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Constants.brandColor,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'AI 思考中...',
+                    style: TextStyle(fontSize: 12, color: Constants.secondaryTextColor),
+                  ),
+                ],
+              ),
+            ),
+          BottomInputBar(
+            controller: _inputController,
+            onSend: () {
+              final text = _inputController.text.trim();
+              if (text.isNotEmpty) {
+                _inputController.clear();
+                _sendMessage(text);
+              }
+            },
+            hintText: '输入问题...',
+          ),
+        ],
+      ),
+    );
+  }
+}
