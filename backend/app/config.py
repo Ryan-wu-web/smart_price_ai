@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     volcengine_api_key: str = ""
     volcengine_endpoint: str = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    volcengine_model: str = "ep-20260514111211-cd94c"
 
     class Config:
         env_file = ".env"

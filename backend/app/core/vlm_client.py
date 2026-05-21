@@ -34,7 +34,7 @@ class VLMClient:
             }
         ]
         payload = {
-            "model": "doubao-seed-2.0-lite",
+            "model": settings.volcengine_model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
