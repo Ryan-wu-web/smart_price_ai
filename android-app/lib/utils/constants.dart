@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Constants {
-  static const String apiBaseUrl = 'http://10.0.2.2:8000';
+  static const String apiBaseUrl = 'http://10.60.243.80:8000';
 
   static const Color backgroundColor = Color(0xFFF5F5F7);
   static const Color cardColor = Colors.white;

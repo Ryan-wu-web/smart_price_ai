@@ -17,6 +17,9 @@ class MockDataSource(DataSource):
         self._data: list[ProductResponse] = []
         now = datetime.utcnow()
         base_items = [
+            {"name": "Nike Air Force 1 空军一号", "brand": "Nike", "category": "鞋", "color": "白色", "price": 749.0, "platform": "淘宝", "rating": 4.9, "tags": ["经典", "板鞋"]},
+            {"name": "Nike Air Force 1 空军一号", "brand": "Nike", "category": "鞋", "color": "白色", "price": 799.0, "platform": "京东", "rating": 4.8, "tags": ["经典", "板鞋"]},
+            {"name": "Nike Air Force 1 空军一号", "brand": "Nike", "category": "鞋", "color": "白色", "price": 699.0, "platform": "拼多多", "rating": 4.7, "tags": ["经典", "百亿补贴"]},
             {"name": "Nike Air Max 90", "brand": "Nike", "category": "鞋", "color": "白色", "price": 899.0, "platform": "淘宝", "rating": 4.8, "tags": ["运动", "经典"]},
             {"name": "Nike Air Max 90", "brand": "Nike", "category": "鞋", "color": "黑色", "price": 799.0, "platform": "京东", "rating": 4.7, "tags": ["运动", "经典"]},
             {"name": "Adidas Ultraboost 22", "brand": "Adidas", "category": "鞋", "color": "灰色", "price": 1099.0, "platform": "天猫", "rating": 4.9, "tags": ["跑步", "缓震"]},
@@ -50,11 +53,28 @@ class MockDataSource(DataSource):
     def search(
         self, category: str, brand: str | None = None, color: str | None = None
     ) -> list[ProductResponse]:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[MockDataSource] search called: category={category}, brand={brand}, color={color}")
+        
         results = [p for p in self._data if p.category == category]
+        logger.info(f"[MockDataSource] after category filter: {len(results)} items")
+        
         if brand:
-            results = [p for p in results if p.brand.lower() == brand.lower()]
+            brand_clean = brand.split("（")[0].strip().lower()
+            results = [p for p in results if p.brand.lower() == brand_clean]
+            logger.info(f"[MockDataSource] after brand filter: {len(results)} items")
+        
         if color:
-            results = [p for p in results if p.color.lower() == color.lower()]
+            color_clean = color.replace("纯", "").replace("色", "").strip().lower()
+            results = [p for p in results if color_clean in p.color.lower() or p.color.lower() in color.lower()]
+            logger.info(f"[MockDataSource] after color filter: {len(results)} items")
+        
+        # 兜底：如果全部过滤后为空，返回该品类所有商品
+        if not results:
+            results = [p for p in self._data if p.category == category]
+            logger.info(f"[MockDataSource] fallback: returning {len(results)} items by category only")
+        
         return results
 
 

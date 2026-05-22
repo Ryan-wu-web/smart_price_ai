@@ -73,6 +73,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final response = await ApiService().sendChat(
       text,
       sessionId: _sessionId,
+      currentProduct: widget.initialProduct?.toJson(),
       context: context,
     );
 

@@ -197,6 +197,18 @@ class _ResultScreenState extends State<ResultScreen> {
                           ),
                   ),
                   const SizedBox(height: 16),
+                  if (_result.name != null && _result.name!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        _result.name!,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Constants.primaryTextColor,
+                        ),
+                      ),
+                    ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -206,9 +218,11 @@ class _ResultScreenState extends State<ResultScreen> {
                         _result.brand,
                         () => _editAttribute('品牌', _result.brand ?? '', (v) {
                           setState(() => _result = RecognitionResult(
+                                name: _result.name,
                                 category: _result.category,
                                 brand: v,
                                 color: _result.color,
+                                material: _result.material,
                                 style: _result.style,
                                 attributes: _result.attributes,
                                 confidence: _result.confidence,
@@ -221,9 +235,11 @@ class _ResultScreenState extends State<ResultScreen> {
                         _result.color,
                         () => _editAttribute('颜色', _result.color ?? '', (v) {
                           setState(() => _result = RecognitionResult(
+                                name: _result.name,
                                 category: _result.category,
                                 brand: _result.brand,
                                 color: v,
+                                material: _result.material,
                                 style: _result.style,
                                 attributes: _result.attributes,
                                 confidence: _result.confidence,
@@ -236,9 +252,11 @@ class _ResultScreenState extends State<ResultScreen> {
                         _result.category,
                         () => _editAttribute('类目', _result.category ?? '', (v) {
                           setState(() => _result = RecognitionResult(
+                                name: _result.name,
                                 category: v,
                                 brand: _result.brand,
                                 color: _result.color,
+                                material: _result.material,
                                 style: _result.style,
                                 attributes: _result.attributes,
                                 confidence: _result.confidence,
@@ -251,9 +269,11 @@ class _ResultScreenState extends State<ResultScreen> {
                         _result.style,
                         () => _editAttribute('风格', _result.style ?? '', (v) {
                           setState(() => _result = RecognitionResult(
+                                name: _result.name,
                                 category: _result.category,
                                 brand: _result.brand,
                                 color: _result.color,
+                                material: _result.material,
                                 style: v,
                                 attributes: _result.attributes,
                                 confidence: _result.confidence,

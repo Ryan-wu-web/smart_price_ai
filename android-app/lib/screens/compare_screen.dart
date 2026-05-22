@@ -23,6 +23,7 @@ class CompareScreen extends StatefulWidget {
 
 class _CompareScreenState extends State<CompareScreen> {
   final List<String> _filters = ['综合推荐', '价格从低', '销量优先', '好评率'];
+  final List<String?> _sortByValues = [null, 'price', null, 'rating'];
   int _selectedFilter = 0;
   List<Product> _products = [];
   bool _isLoading = true;
@@ -39,6 +40,7 @@ class _CompareScreenState extends State<CompareScreen> {
       widget.category,
       brand: widget.brand,
       color: widget.color,
+      sortBy: _sortByValues[_selectedFilter],
       context: context,
     );
     setState(() {
@@ -89,7 +91,10 @@ class _CompareScreenState extends State<CompareScreen> {
               itemBuilder: (_, index) {
                 final isSelected = _selectedFilter == index;
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedFilter = index),
+                  onTap: () {
+                    setState(() => _selectedFilter = index);
+                    _loadProducts();
+                  },
                   child: Container(
                     margin: const EdgeInsets.only(right: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

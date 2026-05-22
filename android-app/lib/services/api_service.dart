@@ -31,7 +31,7 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/recognize'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'image': base64Image}),
+        body: jsonEncode({'image_base64': base64Image}),
       );
 
       if (response.statusCode == 200) {
@@ -83,12 +83,14 @@ class ApiService {
     String category, {
     String? brand,
     String? color,
+    String? sortBy,
     BuildContext? context,
   }) async {
     try {
       final queryParams = <String, String>{'category': category};
       if (brand != null) queryParams['brand'] = brand;
       if (color != null) queryParams['color'] = color;
+      if (sortBy != null) queryParams['sort_by'] = sortBy;
 
       final uri = Uri.parse('$_baseUrl/api/v1/compare')
           .replace(queryParameters: queryParams);
@@ -116,7 +118,7 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/filter'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'query': query}),
+        body: jsonEncode({'query_text': query}),
       );
 
       if (response.statusCode == 200) {
@@ -177,16 +179,21 @@ class ApiService {
   Future<Map<String, dynamic>?> sendChat(
     String message, {
     String? sessionId,
+    Map<String, dynamic>? currentProduct,
     BuildContext? context,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'message': message,
+        'session_id': sessionId,
+      };
+      if (currentProduct != null) {
+        body['current_product'] = currentProduct;
+      }
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/chat'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'message': message,
-          'session_id': sessionId,
-        }),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
