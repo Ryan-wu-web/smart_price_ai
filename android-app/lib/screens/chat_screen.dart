@@ -22,10 +22,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   String? _sessionId;
   bool _isLoading = false;
+  Product? _currentProduct;
 
   @override
   void initState() {
     super.initState();
+    _currentProduct = widget.initialProduct;
     _addWelcomeMessage();
     if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
       _sendMessage(widget.initialMessage!);
@@ -33,6 +35,13 @@ class _ChatScreenState extends State<ChatScreen> {
     if (widget.initialProduct != null) {
       _addProductMessage(widget.initialProduct!);
     }
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _addWelcomeMessage() {
@@ -70,35 +79,49 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
-    final response = await ApiService().sendChat(
-      text,
-      sessionId: _sessionId,
-      currentProduct: widget.initialProduct?.toJson(),
-      context: context,
-    );
+    try {
+      final response = await ApiService().sendChat(
+        text,
+        sessionId: _sessionId,
+        currentProduct: _currentProduct?.toJson(),
+      );
 
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (response != null) {
-      final reply = response['reply']?.toString() ??
-          response['message']?.toString() ??
-          '抱歉，我没有理解您的问题。';
-      final newSessionId = response['session_id']?.toString() ??
-          response['sessionId']?.toString();
-      if (newSessionId != null) _sessionId = newSessionId;
+      if (!mounted) return;
+      if (response != null) {
+        final reply = response['reply']?.toString() ??
+            response['message']?.toString() ??
+            '抱歉，我没有理解您的问题。';
+        final newSessionId = response['session_id']?.toString() ??
+            response['sessionId']?.toString();
+        if (newSessionId != null) _sessionId = newSessionId;
 
-      setState(() {
-        _messages.add(ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          text: reply,
-          isUser: false,
-          timestamp: DateTime.now(),
-          action: response['action']?.toString(),
-          actionData: response['action_data'] as Map<String, dynamic>? ??
-              response['actionData'] as Map<String, dynamic>?,
-        ));
-      });
-      _scrollToBottom();
+        setState(() {
+          _messages.add(ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            text: reply,
+            isUser: false,
+            timestamp: DateTime.now(),
+            action: response['action']?.toString(),
+            actionData: response['action_data'] as Map<String, dynamic>? ??
+                response['actionData'] as Map<String, dynamic>?,
+          ));
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('发送消息失败: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

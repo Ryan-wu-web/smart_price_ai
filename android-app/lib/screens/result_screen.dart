@@ -33,6 +33,12 @@ class _ResultScreenState extends State<ResultScreen> {
     _result = widget.recognitionResult;
   }
 
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
   void _editAttribute(String title, String currentValue,
       void Function(String) onConfirm) {
     final controller = TextEditingController(text: currentValue);

@@ -36,17 +36,29 @@ class _CompareScreenState extends State<CompareScreen> {
 
   Future<void> _loadProducts() async {
     setState(() => _isLoading = true);
-    final products = await ApiService().compare(
-      widget.category,
-      brand: widget.brand,
-      color: widget.color,
-      sortBy: _sortByValues[_selectedFilter],
-      context: context,
-    );
-    setState(() {
-      _products = products;
-      _isLoading = false;
-    });
+    try {
+      final products = await ApiService().compare(
+        widget.category,
+        brand: widget.brand,
+        color: widget.color,
+        sortBy: _sortByValues[_selectedFilter],
+      );
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('加载失败: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _onProductTap(Product product) {

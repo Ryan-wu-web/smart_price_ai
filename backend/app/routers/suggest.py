@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Query
 
 from app.models.schemas import SuggestResponse
 from app.services.suggestion import SuggestionService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["suggest"])
 
@@ -16,5 +20,8 @@ async def suggest(
         service = SuggestionService()
         cards = await service.generate_cards(category, brand, color)
         return SuggestResponse(cards=cards)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"suggest failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -1,14 +1,14 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import CompareQuery, CompareResponse
 from app.services.comparison import ComparisonService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1", tags=["compare"])
 
-
-import logging
-
-logger = logging.getLogger(__name__)
 
 @router.get("/compare", response_model=CompareResponse)
 async def compare(
@@ -24,6 +24,8 @@ async def compare(
         products = service.compare(query)
         logger.info(f"[compare API] returning {len(products)} products")
         return CompareResponse(products=products)
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"[compare API] error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"compare failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

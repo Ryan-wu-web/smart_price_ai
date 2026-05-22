@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,11 +12,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# CORS: 生产环境应限制为明确的前端域名
+_origins = ["*"] if settings.debug else (
+    os.environ.get("ALLOWED_ORIGINS", "").split(",") if os.environ.get("ALLOWED_ORIGINS") else []
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=_origins,
+    allow_credentials=not settings.debug,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 

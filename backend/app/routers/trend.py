@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import TrendResponse
 from app.services.trend import TrendService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["trend"])
 
@@ -17,5 +21,8 @@ async def trend(product_id: str):
             {"date": "2024-03-01", "price": 900.0, "platform": "天猫"},
         ]
         return service.analyze_trend_sync(product_id, history)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"trend failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -27,12 +27,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadRecentRecords() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final recordsJson = prefs.getStringList('recent_records') ?? [];
     setState(() {
       _recentRecords.clear();
       _recentRecords.addAll(
         recordsJson
-            .map((e) => jsonDecode(e) as Map<String, dynamic>)
+            .map((e) {
+              try {
+                return jsonDecode(e) as Map<String, dynamic>;
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<Map<String, dynamic>>()
             .toList(),
       );
     });
@@ -56,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'recent_records',
       _recentRecords.map((e) => jsonEncode(e)).toList(),
     );
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -73,20 +82,32 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (_) => const Center(child: CircularProgressIndicator(color: Constants.brandColor)),
     );
 
-    final result = await ApiService().recognize(file, context);
+    try {
+      final result = await ApiService().recognize(file);
 
-    if (!mounted) return;
-    Navigator.pop(context);
+      if (!mounted) return;
+      Navigator.pop(context);
 
-    if (result != null) {
-      await _saveRecentRecord(result, picked.path);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultScreen(
-            recognitionResult: result,
-            imageFile: file,
+      if (result != null) {
+        await _saveRecentRecord(result, picked.path);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResultScreen(
+              recognitionResult: result,
+              imageFile: file,
+            ),
           ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('识别失败: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
