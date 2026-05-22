@@ -1,4 +1,9 @@
+import logging
+
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
+
 
 class Settings(BaseSettings):
     app_name: str = "Smart Price AI"
@@ -12,4 +17,8 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
+
 settings = Settings()
+
+if not settings.volcengine_api_key:
+    logger.warning("volcengine_api_key is empty; LLM/VLM calls will fail unless mock mode is used.")

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.schemas import CompareQuery, ProductResponse
 
@@ -15,7 +15,7 @@ class DataSource(ABC):
 class MockDataSource(DataSource):
     def __init__(self):
         self._data: list[ProductResponse] = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         base_items = [
             {"name": "Nike Air Force 1 空军一号", "brand": "Nike", "category": "鞋", "color": "白色", "price": 749.0, "platform": "淘宝", "rating": 4.9, "tags": ["经典", "板鞋"]},
             {"name": "Nike Air Force 1 空军一号", "brand": "Nike", "category": "鞋", "color": "白色", "price": 799.0, "platform": "京东", "rating": 4.8, "tags": ["经典", "板鞋"]},
@@ -57,23 +57,38 @@ class MockDataSource(DataSource):
         logger = logging.getLogger(__name__)
         logger.info(f"[MockDataSource] search called: category={category}, brand={brand}, color={color}")
         
+        # 第一步：精确匹配 category
         results = [p for p in self._data if p.category == category]
-        logger.info(f"[MockDataSource] after category filter: {len(results)} items")
+        logger.info(f"[MockDataSource] exact category match: {len(results)} items")
         
+        # 第二步：如果精确匹配为空，尝试包含匹配（如"运动休闲板鞋"包含"鞋"）
+        if not results:
+            results = [p for p in self._data if category in p.category or p.category in category]
+            logger.info(f"[MockDataSource] loose category match: {len(results)} items")
+        
+        # 第三步：如果还是为空，返回所有商品（兜底）
+        if not results:
+            results = list(self._data)
+            for p in results:
+                if "fallback" not in p.tags:
+                    p.tags.append("fallback")
+            logger.info(f"[MockDataSource] returning all {len(results)} items as fallback")
+        
+        # 品牌过滤
         if brand:
             brand_clean = brand.split("（")[0].strip().lower()
-            results = [p for p in results if p.brand.lower() == brand_clean]
+            brand_results = [p for p in results if p.brand.lower() == brand_clean]
+            if brand_results:  # 有匹配才过滤，否则保留原结果
+                results = brand_results
             logger.info(f"[MockDataSource] after brand filter: {len(results)} items")
         
+        # 颜色过滤（宽松）
         if color:
             color_clean = color.replace("纯", "").replace("色", "").strip().lower()
-            results = [p for p in results if color_clean in p.color.lower() or p.color.lower() in color.lower()]
+            color_results = [p for p in results if color_clean in p.color.lower() or p.color.lower() in color.lower()]
+            if color_results:
+                results = color_results
             logger.info(f"[MockDataSource] after color filter: {len(results)} items")
-        
-        # 兜底：如果全部过滤后为空，返回该品类所有商品
-        if not results:
-            results = [p for p in self._data if p.category == category]
-            logger.info(f"[MockDataSource] fallback: returning {len(results)} items by category only")
         
         return results
 

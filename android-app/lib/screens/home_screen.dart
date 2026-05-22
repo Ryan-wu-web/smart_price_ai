@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recognition_result.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
+import 'chat_screen.dart';
+import 'compare_screen.dart';
 import 'result_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -201,24 +203,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(Constants.largeRadius),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, color: Constants.secondaryTextColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      '搜索商品、品牌...',
-                      style: TextStyle(
-                        color: Constants.secondaryTextColor.withOpacity(0.6),
-                        fontSize: 14,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ChatScreen()),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(Constants.largeRadius),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: Constants.secondaryTextColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        '搜索商品、品牌...',
+                        style: TextStyle(
+                          color: Constants.secondaryTextColor.withOpacity(0.6),
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -228,20 +238,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   scrollDirection: Axis.horizontal,
                   itemCount: _categories.length,
                   itemBuilder: (_, index) {
-                    return Container(
-                      margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFE5E5EA)),
-                      ),
-                      child: Text(
-                        _categories[index],
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Constants.primaryTextColor,
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CompareScreen(
+                              category: _categories[index],
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE5E5EA)),
+                        ),
+                        child: Text(
+                          _categories[index],
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Constants.primaryTextColor,
+                          ),
                         ),
                       ),
                     );

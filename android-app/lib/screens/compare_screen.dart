@@ -161,9 +161,11 @@ class _CompareScreenState extends State<CompareScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _products.length,
                         itemBuilder: (_, index) {
+                          final product = _products[index];
                           return ProductCard(
-                            product: _products[index],
-                            onTap: () => _onProductTap(_products[index]),
+                            key: ValueKey(product.id),
+                            product: product,
+                            onTap: () => _onProductTap(product),
                           );
                         },
                       ),

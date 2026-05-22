@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class RecognizeRequest(BaseModel):
-    image_base64: str = Field(..., min_length=1, description="Base64 编码的商品图片")
+    image_base64: str = Field(..., min_length=1, max_length=15_000_000, description="Base64 编码的商品图片")
 
 
 class RecognizeResponse(BaseModel):
@@ -85,7 +85,7 @@ class ReportResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1)
+    message: str = Field(..., min_length=1, max_length=4000)
     session_id: Optional[str] = None
     current_product: Optional[dict[str, Any]] = None
 

@@ -10,6 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
+  # image_picker 降级到 0.8.9：
+  # 1.x 版本依赖的 flutter_plugin_android_lifecycle 要求 Android SDK 35，
+  # 但当前 Android Studio JBR 的 jlink 与 SDK 35 的 core-for-system-modules.jar 不兼容。
+  # 降级后使用 SDK 34 编译，规避 JdkImageTransform 失败问题。
   image_picker: ^0.8.9
   cupertino_icons: ^1.0.6
   shared_preferences: ^2.2.2

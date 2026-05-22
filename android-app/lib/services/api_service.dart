@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -23,17 +24,24 @@ class ApiService {
     final bytes = await image.readAsBytes();
     final base64Image = base64Encode(bytes);
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/recognize'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'image_base64': base64Image}),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/recognize'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'image_base64': base64Image}),
+      ).timeout(const Duration(seconds: 60));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return RecognitionResult.fromJson(data);
-    } else {
-      throw ApiException('识别失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is! Map<String, dynamic> || data['category'] == null) {
+          throw ApiException('Invalid server response');
+        }
+        return RecognitionResult.fromJson(data);
+      } else {
+        throw ApiException('识别失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 
@@ -49,16 +57,23 @@ class ApiService {
     final uri = Uri.parse('$_baseUrl/api/v1/suggest')
         .replace(queryParameters: queryParams);
 
-    final response = await http.get(uri);
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final list = data['products'] ?? data['data'] ?? data ?? [];
-      return (list as List<dynamic>)
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } else {
-      throw ApiException('获取建议失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is! Map<String, dynamic>) {
+          throw ApiException('Invalid server response');
+        }
+        final list = data['products'] ?? data['data'] ?? [];
+        return (list as List<dynamic>)
+            .map((e) => Product.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw ApiException('获取建议失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 
@@ -76,59 +91,82 @@ class ApiService {
     final uri = Uri.parse('$_baseUrl/api/v1/compare')
         .replace(queryParameters: queryParams);
 
-    final response = await http.get(uri);
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final list = data['products'] ?? data['data'] ?? data ?? [];
-      return (list as List<dynamic>)
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } else {
-      throw ApiException('比价失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is! Map<String, dynamic>) {
+          throw ApiException('Invalid server response');
+        }
+        final list = data['products'] ?? data['data'] ?? [];
+        return (list as List<dynamic>)
+            .map((e) => Product.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw ApiException('比价失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 
   Future<List<Product>> sendFilter(String query) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/filter'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'query_text': query}),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/filter'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'query_text': query}),
+      ).timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final list = data['products'] ?? data['data'] ?? data ?? [];
-      return (list as List<dynamic>)
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } else {
-      throw ApiException('筛选失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is! Map<String, dynamic>) {
+          throw ApiException('Invalid server response');
+        }
+        final list = data['products'] ?? data['data'] ?? [];
+        return (list as List<dynamic>)
+            .map((e) => Product.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw ApiException('筛选失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 
   Future<Map<String, dynamic>?> getTrend(String productId) async {
-    final response =
-        await http.get(Uri.parse('$_baseUrl/api/v1/trend/$productId'));
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/api/v1/trend/$productId'))
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } else {
-      throw ApiException('获取价格走势失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw ApiException('获取价格走势失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 
   Future<Map<String, dynamic>?> generateReport(String productId) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/report'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'product_id': productId}),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/report'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'product_id': productId}),
+      ).timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } else {
-      throw ApiException('生成报告失败: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw ApiException('生成报告失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 
@@ -139,21 +177,28 @@ class ApiService {
   }) async {
     final body = <String, dynamic>{
       'message': message,
-      'session_id': sessionId,
     };
+    if (sessionId != null) {
+      body['session_id'] = sessionId;
+    }
     if (currentProduct != null) {
       body['current_product'] = currentProduct;
     }
-    final response = await http.post(
-      Uri.parse('$_baseUrl/api/v1/chat'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } else {
-      throw ApiException('发送消息失败: ${response.statusCode}');
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw ApiException('发送消息失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException('请求超时，请检查网络后重试');
     }
   }
 }

@@ -1,14 +1,11 @@
 from typing import Optional
 
-import httpx
-
-from app.config import settings
+from app.core.base_api_client import BaseAPIClient
 
 
-class VLMClient:
+class VLMClient(BaseAPIClient):
     def __init__(self, api_key: Optional[str] = None, endpoint: Optional[str] = None):
-        self.api_key = api_key or settings.volcengine_api_key
-        self.endpoint = endpoint or settings.volcengine_endpoint
+        super().__init__(api_key=api_key, endpoint=endpoint)
 
     async def describe_image(
         self,
@@ -17,10 +14,6 @@ class VLMClient:
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> str:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
         messages = [
             {
                 "role": "user",
@@ -33,14 +26,5 @@ class VLMClient:
                 ],
             }
         ]
-        payload = {
-            "model": settings.volcengine_model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(self.endpoint, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
+        data = await self._post(messages, temperature, max_tokens)
+        return data["choices"][0]["message"]["content"]

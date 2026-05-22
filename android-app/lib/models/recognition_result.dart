@@ -48,4 +48,28 @@ class RecognitionResult {
       'imageUrl': imageUrl,
     };
   }
+
+  RecognitionResult copyWith({
+    String? name,
+    String? category,
+    String? brand,
+    String? color,
+    String? material,
+    String? style,
+    Map<String, dynamic>? attributes,
+    double? confidence,
+    String? imageUrl,
+  }) {
+    return RecognitionResult(
+      name: name ?? this.name,
+      category: category ?? this.category,
+      brand: brand ?? this.brand,
+      color: color ?? this.color,
+      material: material ?? this.material,
+      style: style ?? this.style,
+      attributes: attributes ?? this.attributes,
+      confidence: confidence ?? this.confidence,
+      imageUrl: imageUrl ?? this.imageUrl,
+    );
+  }
 }

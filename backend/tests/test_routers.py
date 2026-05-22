@@ -26,8 +26,7 @@ def test_trend(client):
     assert "confidence" in data
 
 
-@pytest.mark.asyncio
-async def test_filter(client):
+def test_filter(client):
     with patch("app.routers.filter.FilteringService") as MockService:
         instance = MockService.return_value
         instance.parse_filter = AsyncMock(return_value={"price_max": 500})
@@ -37,8 +36,7 @@ async def test_filter(client):
         assert data["filters"]["price_max"] == 500
 
 
-@pytest.mark.asyncio
-async def test_chat(client):
+def test_chat(client):
     with patch("app.routers.chat.ChatService") as MockService:
         instance = MockService.return_value
         instance.chat = AsyncMock(return_value={
@@ -54,8 +52,7 @@ async def test_chat(client):
         assert data["session_id"] == "test-session-123"
 
 
-@pytest.mark.asyncio
-async def test_suggest(client):
+def test_suggest(client):
     with patch("app.routers.suggest.SuggestionService") as MockService:
         instance = MockService.return_value
         instance.generate_cards = AsyncMock(return_value=[
@@ -68,8 +65,7 @@ async def test_suggest(client):
         assert data["cards"][0]["type"] == "lowest_price"
 
 
-@pytest.mark.asyncio
-async def test_report(client):
+def test_report(client):
     with patch("app.routers.report.ReportService") as MockService:
         instance = MockService.return_value
         instance.generate_report = AsyncMock(return_value={
@@ -88,8 +84,7 @@ async def test_report(client):
         assert data["summary"] == "测试报告"
 
 
-@pytest.mark.asyncio
-async def test_recognize(client):
+def test_recognize(client):
     with patch("app.routers.recognize.RecognitionService") as MockService:
         instance = MockService.return_value
         instance.recognize = AsyncMock(return_value={

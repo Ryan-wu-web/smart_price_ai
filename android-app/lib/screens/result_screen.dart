@@ -223,68 +223,28 @@ class _ResultScreenState extends State<ResultScreen> {
                         '品牌',
                         _result.brand,
                         () => _editAttribute('品牌', _result.brand ?? '', (v) {
-                          setState(() => _result = RecognitionResult(
-                                name: _result.name,
-                                category: _result.category,
-                                brand: v,
-                                color: _result.color,
-                                material: _result.material,
-                                style: _result.style,
-                                attributes: _result.attributes,
-                                confidence: _result.confidence,
-                                imageUrl: _result.imageUrl,
-                              ));
+                          setState(() => _result = _result.copyWith(brand: v));
                         }),
                       ),
                       _buildAttributeChip(
                         '颜色',
                         _result.color,
                         () => _editAttribute('颜色', _result.color ?? '', (v) {
-                          setState(() => _result = RecognitionResult(
-                                name: _result.name,
-                                category: _result.category,
-                                brand: _result.brand,
-                                color: v,
-                                material: _result.material,
-                                style: _result.style,
-                                attributes: _result.attributes,
-                                confidence: _result.confidence,
-                                imageUrl: _result.imageUrl,
-                              ));
+                          setState(() => _result = _result.copyWith(color: v));
                         }),
                       ),
                       _buildAttributeChip(
                         '类目',
                         _result.category,
                         () => _editAttribute('类目', _result.category ?? '', (v) {
-                          setState(() => _result = RecognitionResult(
-                                name: _result.name,
-                                category: v,
-                                brand: _result.brand,
-                                color: _result.color,
-                                material: _result.material,
-                                style: _result.style,
-                                attributes: _result.attributes,
-                                confidence: _result.confidence,
-                                imageUrl: _result.imageUrl,
-                              ));
+                          setState(() => _result = _result.copyWith(category: v));
                         }),
                       ),
                       _buildAttributeChip(
                         '风格',
                         _result.style,
                         () => _editAttribute('风格', _result.style ?? '', (v) {
-                          setState(() => _result = RecognitionResult(
-                                name: _result.name,
-                                category: _result.category,
-                                brand: _result.brand,
-                                color: _result.color,
-                                material: _result.material,
-                                style: v,
-                                attributes: _result.attributes,
-                                confidence: _result.confidence,
-                                imageUrl: _result.imageUrl,
-                              ));
+                          setState(() => _result = _result.copyWith(style: v));
                         }),
                       ),
                     ],
@@ -321,23 +281,47 @@ class _ResultScreenState extends State<ResultScreen> {
                             );
                           },
                         ),
-                        const SuggestionCard(
+                        SuggestionCard(
                           icon: Icons.store,
                           title: '官方旗舰店',
                           subtitle: '正品保障',
                           iconColor: Colors.blue,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('功能开发中，敬请期待'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
                         ),
-                        const SuggestionCard(
+                        SuggestionCard(
                           icon: Icons.trending_up,
                           title: '价格走势',
                           subtitle: '历史价格分析',
                           iconColor: Colors.orange,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('功能开发中，敬请期待'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
                         ),
-                        const SuggestionCard(
+                        SuggestionCard(
                           icon: Icons.recommend,
                           title: '相似推荐',
                           subtitle: '更多类似商品',
                           iconColor: Colors.purple,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('功能开发中，敬请期待'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
