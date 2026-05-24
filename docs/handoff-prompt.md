@@ -112,4 +112,58 @@ flutter run
 
 ---
 
-**请基于以上上下文继续推进项目。当前下一步是 Day 4 (5.23) 的 UI 精细打磨。**
+## Day 4 (5.23) 更新 — UI 精细打磨完成
+
+### 新增页面（3个）
+- `screens/splash_screen.dart` — Aurora 炫彩渐变启动页，粗体标题 "SMART PRICE AI"，脉冲按钮，stagger 淡入动画，支持 prefers-reduced-motion
+- `screens/trend_screen.dart` — 价格趋势页骨架（商品信息卡片 + 走势图占位 + AI分析 + 价格统计）
+- `screens/report_screen.dart` — 决策报告页骨架（渐变头部 + 最优选择卡片 + 其他选择 + AI建议 + 保存按钮）
+
+### Design Token 体系重构
+- `utils/constants.dart` — 完整 Token 体系：
+  - **颜色**：brandColor `#00B4D8`、primaryDark `#0077B6`、accentColor `#FF6B6B`、background `#F8F9FA`
+  - **字体层级**：display(28px)/h1(22px)/h2(17px)/body(14px)/caption(12px)/label(13px)
+  - **圆角**：8/12/16/20 四级体系
+  - **阴影**：shadowCard/shadowElevated/shadowButton/shadowLight 四级
+  - **间距**：8px 基准网格
+  - **渐变**：brandGradient、auroraGradient、placeholderGradient
+
+### 全局打磨
+- `main.dart` — 完整 ThemeData（AppBar/Card/Button/InputDecoration），SplashScreen 为入口，全局 NoiseTexture 噪点纹理
+- `widgets/bottom_input_bar.dart` — 浅色主题重构（白底 + 品牌渐变圆形发送按钮）
+
+### 页面打磨（4个现有页面）
+- `home_screen.dart` — display 字体层级、品牌渐变拍照按钮、搜索框阴影、最近识别卡片阴影、白色底部栏
+- `result_screen.dart` — 图片区域阴影、属性标签无边框+品牌青底色、建议卡片跳转 TrendScreen、AI建议左侧装饰线
+- `compare_screen.dart` — 筛选标签选中态改为品牌青背景
+- `chat_screen.dart` — 浅色底部栏、跳动圆点 AI 思考指示器、决策报告跳转 ReportScreen
+
+### 组件打磨（3个组件）
+- `widgets/product_card.dart` — 卡片阴影、促销红价格色、平台标签优化
+- `widgets/suggestion_card.dart` — 统一 shadowCard、图标容器圆角统一
+- `widgets/chat_bubble.dart` — 圆角 18→16 优化、统一 shadowLight
+
+### QA 补充（frontend-design）
+- `widgets/noise_texture.dart` — 极淡噪点纹理覆盖层（opacity 0.03），避免纯平色单调感
+- `splash_screen.dart` — `MediaQuery.disableAnimations` 检测，减少动画偏好用户自动跳过动画
+
+### 构建验证
+- `flutter analyze` — 无 errors，无 warnings
+- `flutter build apk --debug` — ✅ 成功（161.2s）
+
+### Git 提交记录
+```
+5d9f7b2 a11y(batch6): add NoiseTexture overlay + prefers-reduced-motion support
+ea06a62 feat(batch2+3): SplashScreen+Aurora gradient, TrendScreen, ReportScreen + polish screens
+0c203d8 design(batch4): polish ProductCard/SuggestionCard/ChatBubble
+d3add63 design(batch1): complete Design Token system, theme config, light BottomInputBar
+```
+
+---
+
+**请基于以上上下文继续推进项目。当前下一步是 Day 5 (5.25) 的动效与交互：**
+- 页面转场动画（Hero 动画 / 自定义路由）
+- 卡片磁吸悬浮效果
+- 加载状态 Skeleton
+- 空状态插画
+- 图片预览过渡
