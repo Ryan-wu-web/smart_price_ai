@@ -1,13 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../models/product.dart';
 import '../models/recognition_result.dart';
-import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
 import '../widgets/suggestion_card.dart';
 import 'chat_screen.dart';
 import 'compare_screen.dart';
+import 'trend_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final RecognitionResult recognitionResult;
@@ -93,9 +92,8 @@ class _ResultScreenState extends State<ResultScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Constants.brandColor.withOpacity(0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5E5EA)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -184,6 +182,7 @@ class _ResultScreenState extends State<ResultScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(Constants.largeRadius),
                       color: const Color(0xFFE8E8ED),
+                      boxShadow: const [Constants.shadowCard],
                     ),
                     child: widget.imageFile != null
                         ? ClipRRect(
@@ -301,10 +300,13 @@ class _ResultScreenState extends State<ResultScreen> {
                           subtitle: '历史价格分析',
                           iconColor: Colors.orange,
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('功能开发中，敬请期待'),
-                                behavior: SnackBarBehavior.floating,
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TrendScreen(
+                                  productName: _result.name ?? _result.category ?? '未知商品',
+                                  currentPrice: 799,
+                                ),
                               ),
                             );
                           },
@@ -333,6 +335,8 @@ class _ResultScreenState extends State<ResultScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(Constants.largeRadius),
+                      boxShadow: const [Constants.shadowCard],
+                      border: const Border(left: BorderSide(color: Constants.brandColor, width: 3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

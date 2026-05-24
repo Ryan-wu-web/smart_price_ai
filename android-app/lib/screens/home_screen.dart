@@ -174,19 +174,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Text(
                         'Hi, User',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Constants.primaryTextColor,
-                        ),
+                        style: Constants.display,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '今天想买点什么？',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Constants.secondaryTextColor.withOpacity(0.8),
-                        ),
+                        style: Constants.label.copyWith(color: Constants.tertiaryTextColor),
                       ),
                     ],
                   ),
@@ -215,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(Constants.largeRadius),
+                    boxShadow: const [Constants.shadowLight],
                   ),
                   child: Row(
                     children: [
@@ -255,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFE5E5EA)),
+                          border: Border.all(color: Constants.borderColor),
                         ),
                         child: Text(
                           _categories[index],
@@ -277,17 +271,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00C9A7), Color(0xFF00B894)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: Constants.brandGradient,
                     borderRadius: BorderRadius.circular(Constants.xLargeRadius),
                     boxShadow: [
                       BoxShadow(
-                        color: Constants.brandColor.withOpacity(0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
+                        color: Constants.brandColor.withOpacity(0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
@@ -371,6 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(Constants.largeRadius),
+                          boxShadow: const [Constants.shadowCard],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,32 +411,63 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: const BoxDecoration(
-          color: Constants.bottomBarColor,
+          color: Constants.surfaceColor,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+            topLeft: Radius.circular(Constants.radiusXLarge),
+            topRight: Radius.circular(Constants.radiusXLarge),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 20,
+              offset: Offset(0, -4),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Row(
             children: [
+              GestureDetector(
+                onTap: () {},
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Constants.backgroundColor,
+                    borderRadius: BorderRadius.circular(Constants.radiusMedium),
+                  ),
+                  child: const Icon(
+                    Icons.mic,
+                    color: Constants.secondaryTextColor,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Constants.backgroundColor,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      Icon(Icons.mic,
-                          color: Colors.white.withOpacity(0.5), size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        '试试语音输入...',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 14,
+                      Expanded(
+                        child: TextField(
+                          style: TextStyle(
+                            color: Constants.primaryTextColor,
+                            fontSize: 14,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '试试语音输入...',
+                            hintStyle: TextStyle(
+                              color: Constants.tertiaryTextColor,
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
                     ],

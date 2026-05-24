@@ -111,11 +111,11 @@ class _CompareScreenState extends State<CompareScreen> {
                     margin: const EdgeInsets.only(right: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? Constants.primaryTextColor : Colors.white,
+                      color: isSelected ? Constants.brandColor : Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       border: isSelected
                           ? null
-                          : Border.all(color: const Color(0xFFE5E5EA)),
+                          : Border.all(color: Constants.borderColor),
                     ),
                     child: Text(
                       _filters[index],

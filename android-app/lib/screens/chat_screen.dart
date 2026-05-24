@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
 import '../widgets/chat_bubble.dart';
+import 'report_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialMessage;
@@ -195,7 +196,15 @@ class _ChatScreenState extends State<ChatScreen> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                // TODO: share report
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ReportScreen(
+                      productName: data['target_product']?.toString() ?? '未知商品',
+                      reportData: data,
+                    ),
+                  ),
+                );
               },
               icon: const Icon(Icons.share, size: 16),
               label: const Text('分享报告'),
@@ -242,6 +251,50 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildDot(0),
+          const SizedBox(width: 4),
+          _buildDot(1),
+          const SizedBox(width: 4),
+          _buildDot(2),
+          const SizedBox(width: 8),
+          Text(
+            'AI 思考中...',
+            style: Constants.caption.copyWith(color: Constants.tertiaryTextColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDot(int index) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
+      builder: (context, value, child) {
+        final delay = index * 0.2;
+        final adjustedValue = (value - delay).clamp(0.0, 1.0) / (1.0 - delay);
+        return Transform.scale(
+          scale: 0.5 + adjustedValue * 0.5,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: Constants.brandColor.withOpacity(0.3 + adjustedValue * 0.7),
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -284,28 +337,7 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Constants.brandColor,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'AI 思考中...',
-                    style: TextStyle(fontSize: 12, color: Constants.secondaryTextColor),
-                  ),
-                ],
-              ),
-            ),
+          if (_isLoading) _buildTypingIndicator(),
           BottomInputBar(
             controller: _inputController,
             onSend: () {
