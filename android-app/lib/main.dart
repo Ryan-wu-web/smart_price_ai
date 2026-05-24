@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
+import 'widgets/noise_texture.dart';
 
 void main() {
   runApp(const SmartPriceAIApp());
@@ -10,8 +11,9 @@ class SmartPriceAIApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Smart Price AI',
+    return NoiseTexture(
+      child: MaterialApp(
+        title: 'Smart Price AI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -70,7 +72,8 @@ class SmartPriceAIApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
-      home: const SplashScreen(),
+        home: const SplashScreen(),
+      ),
     );
   }
 }
