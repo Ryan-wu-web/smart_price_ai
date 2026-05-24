@@ -90,6 +90,9 @@ class _ResultScreenState extends State<ResultScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.42,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: Constants.brandColor.withOpacity(0.08),
@@ -105,12 +108,16 @@ class _ResultScreenState extends State<ResultScreen> {
                 color: Constants.secondaryTextColor,
               ),
             ),
-            Text(
-              value ?? '未知',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Constants.primaryTextColor,
+            Flexible(
+              child: Text(
+                value ?? '未知',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Constants.primaryTextColor,
+                ),
               ),
             ),
             const SizedBox(width: 4),

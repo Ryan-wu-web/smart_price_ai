@@ -320,6 +320,25 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReportScreen(
+                    productName: _currentProduct?.name ?? '当前商品',
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.assignment, size: 18, color: Constants.brandColor),
+            label: const Text(
+              '报告',
+              style: TextStyle(color: Constants.brandColor, fontSize: 13),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [

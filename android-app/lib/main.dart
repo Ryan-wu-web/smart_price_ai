@@ -11,9 +11,8 @@ class SmartPriceAIApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NoiseTexture(
-      child: MaterialApp(
-        title: 'Smart Price AI',
+    return MaterialApp(
+      title: 'Smart Price AI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -72,8 +71,10 @@ class SmartPriceAIApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
-        home: const SplashScreen(),
-      ),
+      builder: (context, child) {
+        return NoiseTexture(child: child!);
+      },
+      home: const SplashScreen(),
     );
   }
 }
