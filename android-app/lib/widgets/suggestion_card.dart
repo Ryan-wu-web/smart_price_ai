@@ -28,13 +28,7 @@ class SuggestionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Constants.cardColor,
           borderRadius: BorderRadius.circular(Constants.largeRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [Constants.shadowCard],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,7 +38,7 @@ class SuggestionCard extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: (iconColor ?? Constants.brandColor).withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(Constants.radiusMedium),
               ),
               child: Icon(
                 icon,

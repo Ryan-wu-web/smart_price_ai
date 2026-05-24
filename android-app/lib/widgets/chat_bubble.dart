@@ -20,20 +20,14 @@ class ChatBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: message.isUser ? Constants.primaryTextColor : Constants.cardColor,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(message.isUser ? 18 : 4),
-            bottomRight: Radius.circular(message.isUser ? 4 : 18),
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(message.isUser ? 16 : 4),
+            bottomRight: Radius.circular(message.isUser ? 4 : 16),
           ),
           boxShadow: message.isUser
               ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+              : const [Constants.shadowLight],
         ),
         child: Text(
           message.text,

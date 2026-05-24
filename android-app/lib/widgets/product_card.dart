@@ -22,6 +22,7 @@ class ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Constants.cardColor,
           borderRadius: BorderRadius.circular(Constants.largeRadius),
+          boxShadow: const [Constants.shadowCard],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +48,7 @@ class ProductCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Constants.brandColor.withOpacity(0.15),
+                      color: Constants.brandColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -78,7 +79,7 @@ class ProductCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Constants.brandColor,
+                          color: Constants.accentColor,
                         ),
                       ),
                       if (product.originalPrice != null && product.originalPrice! > 0) ...[
