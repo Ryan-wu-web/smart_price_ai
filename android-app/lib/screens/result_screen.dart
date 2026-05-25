@@ -22,18 +22,26 @@ class ResultScreen extends StatefulWidget {
   State<ResultScreen> createState() => _ResultScreenState();
 }
 
-class _ResultScreenState extends State<ResultScreen> {
+class _ResultScreenState extends State<ResultScreen>
+    with SingleTickerProviderStateMixin {
   late RecognitionResult _result;
   final TextEditingController _inputController = TextEditingController();
+  late AnimationController _staggerController;
 
   @override
   void initState() {
     super.initState();
     _result = widget.recognitionResult;
+    _staggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _staggerController.forward();
   }
 
   @override
   void dispose() {
+    _staggerController.dispose();
     _inputController.dispose();
     super.dispose();
   }
@@ -225,33 +233,53 @@ class _ResultScreenState extends State<ResultScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildAttributeChip(
-                        '品牌',
-                        _result.brand,
-                        () => _editAttribute('品牌', _result.brand ?? '', (v) {
-                          setState(() => _result = _result.copyWith(brand: v));
-                        }),
+                      FadeTransition(
+                        opacity: Tween<double>(begin: 0, end: 1).animate(
+                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+                        ),
+                        child: _buildAttributeChip(
+                          '品牌',
+                          _result.brand,
+                          () => _editAttribute('品牌', _result.brand ?? '', (v) {
+                            setState(() => _result = _result.copyWith(brand: v));
+                          }),
+                        ),
                       ),
-                      _buildAttributeChip(
-                        '颜色',
-                        _result.color,
-                        () => _editAttribute('颜色', _result.color ?? '', (v) {
-                          setState(() => _result = _result.copyWith(color: v));
-                        }),
+                      FadeTransition(
+                        opacity: Tween<double>(begin: 0, end: 1).animate(
+                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.15, 0.75, curve: Curves.easeOut)),
+                        ),
+                        child: _buildAttributeChip(
+                          '颜色',
+                          _result.color,
+                          () => _editAttribute('颜色', _result.color ?? '', (v) {
+                            setState(() => _result = _result.copyWith(color: v));
+                          }),
+                        ),
                       ),
-                      _buildAttributeChip(
-                        '类目',
-                        _result.category,
-                        () => _editAttribute('类目', _result.category ?? '', (v) {
-                          setState(() => _result = _result.copyWith(category: v));
-                        }),
+                      FadeTransition(
+                        opacity: Tween<double>(begin: 0, end: 1).animate(
+                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.3, 0.9, curve: Curves.easeOut)),
+                        ),
+                        child: _buildAttributeChip(
+                          '类目',
+                          _result.category,
+                          () => _editAttribute('类目', _result.category ?? '', (v) {
+                            setState(() => _result = _result.copyWith(category: v));
+                          }),
+                        ),
                       ),
-                      _buildAttributeChip(
-                        '风格',
-                        _result.style,
-                        () => _editAttribute('风格', _result.style ?? '', (v) {
-                          setState(() => _result = _result.copyWith(style: v));
-                        }),
+                      FadeTransition(
+                        opacity: Tween<double>(begin: 0, end: 1).animate(
+                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.45, 1.0, curve: Curves.easeOut)),
+                        ),
+                        child: _buildAttributeChip(
+                          '风格',
+                          _result.style,
+                          () => _editAttribute('风格', _result.style ?? '', (v) {
+                            setState(() => _result = _result.copyWith(style: v));
+                          }),
+                        ),
                       ),
                     ],
                   ),
@@ -270,67 +298,123 @@ class _ResultScreenState extends State<ResultScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        SuggestionCard(
-                          icon: Icons.compare_arrows,
-                          title: '查看同款低价',
-                          subtitle: '跨平台比价',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CompareScreen(
-                                  category: _result.category ?? '',
-                                  brand: _result.brand,
-                                  color: _result.color,
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 50.0, end: 0.0),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Opacity(
+                              opacity: (50 - value) / 50,
+                              child: Transform.translate(
+                                offset: Offset(0, value),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: SuggestionCard(
+                            icon: Icons.compare_arrows,
+                            title: '查看同款低价',
+                            subtitle: '跨平台比价',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CompareScreen(
+                                    category: _result.category ?? '',
+                                    brand: _result.brand,
+                                    color: _result.color,
+                                  ),
                                 ),
+                              );
+                            },
+                          ),
+                        ),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 50.0, end: 0.0),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Opacity(
+                              opacity: (50 - value) / 50,
+                              child: Transform.translate(
+                                offset: Offset(0, value),
+                                child: child,
                               ),
                             );
                           },
-                        ),
-                        SuggestionCard(
-                          icon: Icons.store,
-                          title: '官方旗舰店',
-                          subtitle: '正品保障',
-                          iconColor: Colors.blue,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('功能开发中，敬请期待'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                        SuggestionCard(
-                          icon: Icons.trending_up,
-                          title: '价格走势',
-                          subtitle: '历史价格分析',
-                          iconColor: Colors.orange,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => TrendScreen(
-                                  productName: _result.name ?? _result.category ?? '未知商品',
-                                  currentPrice: 799,
+                          child: SuggestionCard(
+                            icon: Icons.store,
+                            title: '官方旗舰店',
+                            subtitle: '正品保障',
+                            iconColor: Colors.blue,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('功能开发中，敬请期待'),
+                                  behavior: SnackBarBehavior.floating,
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                        SuggestionCard(
-                          icon: Icons.recommend,
-                          title: '相似推荐',
-                          subtitle: '更多类似商品',
-                          iconColor: Colors.purple,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('功能开发中，敬请期待'),
-                                behavior: SnackBarBehavior.floating,
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 50.0, end: 0.0),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Opacity(
+                              opacity: (50 - value) / 50,
+                              child: Transform.translate(
+                                offset: Offset(0, value),
+                                child: child,
                               ),
                             );
                           },
+                          child: SuggestionCard(
+                            icon: Icons.trending_up,
+                            title: '价格走势',
+                            subtitle: '历史价格分析',
+                            iconColor: Colors.orange,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => TrendScreen(
+                                    productName: _result.name ?? _result.category ?? '未知商品',
+                                    currentPrice: 799,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 50.0, end: 0.0),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Opacity(
+                              opacity: (50 - value) / 50,
+                              child: Transform.translate(
+                                offset: Offset(0, value),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: SuggestionCard(
+                            icon: Icons.recommend,
+                            title: '相似推荐',
+                            subtitle: '更多类似商品',
+                            iconColor: Colors.purple,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('功能开发中，敬请期待'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),

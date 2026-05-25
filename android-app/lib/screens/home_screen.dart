@@ -88,8 +88,8 @@ class _HomeScreenState extends State<HomeScreen> {
       transitionDuration: Constants.durationNormal,
       pageBuilder: (_, __, ___) {
         return ScanLineOverlay(
-          child: Container(color: Colors.black),
           statusText: 'AI 正在识别...',
+          child: Container(color: Colors.black),
         );
       },
     );

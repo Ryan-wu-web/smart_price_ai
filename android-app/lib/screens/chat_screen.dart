@@ -4,7 +4,6 @@ import '../models/product.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
-import '../widgets/chat_bubble.dart';
 import '../widgets/animated_chat_bubble.dart';
 import 'report_screen.dart';
 
