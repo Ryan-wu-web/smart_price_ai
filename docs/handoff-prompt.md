@@ -161,9 +161,61 @@ d3add63 design(batch1): complete Design Token system, theme config, light Bottom
 
 ---
 
-**请基于以上上下文继续推进项目。当前下一步是 Day 5 (5.25) 的动效与交互：**
-- 页面转场动画（Hero 动画 / 自定义路由）
-- 卡片磁吸悬浮效果
-- 加载状态 Skeleton
-- 空状态插画
-- 图片预览过渡
+---
+
+## Day 5 (5.25) 更新 — 动效与交互 + Mock 数据扩充
+
+### Motion Token 体系（constants.dart）
+- `durationFast` (150ms) / `durationNormal` (300ms) / `durationSlow` (500ms)
+- `easeSpring` (elasticOut) / `easeEntrance` (easeOutCubic) / `easeExit` (easeInCubic) / `easeBounce` (bounceOut)
+- `staggerDelayFast` (80ms) — 错开动画延迟基准
+
+### 新增组件（4个）
+- `widgets/bottom_nav_bar.dart` — 黑色背景 + 品牌青选中态 + 顶部指示条滑动动画（TweenAnimationBuilder），4 tab（首页/搜索/聊天/我的），高度 64 + 安全区，圆角 20
+- `widgets/scan_line_overlay.dart` — 全屏扫描线加载遮罩，AnimatedBuilder 驱动水平扫描（2s 循环），品牌青渐变发光 + 暗化遮罩 0.7，3 段状态文字循环切换，底部线性进度条
+- `widgets/shimmer_card.dart` — 骨架屏商品卡片，ShaderMask + LinearGradient shimmer 流动（1.5s 循环），模拟图片/标签/名称/价格占位
+- `widgets/animated_chat_bubble.dart` — 消息入场动画，用户从右侧滑入（Offset 0.3→0），AI 从左侧滑入（Offset -0.3→0），300ms easeEntrance
+
+### 页面动效（4个页面）
+- `home_screen.dart` — 拍照加载替换为 ScanLineOverlay（showGeneralDialog），新增「多目标识别」快捷入口卡片（拍照按钮下方），集成 BottomNavBar（替换旧白色底部栏）
+- `compare_screen.dart` — 加载状态替换为 3 个 ShimmerCard 骨架屏
+- `result_screen.dart` — 4 个属性标签 stagger 淡入（Interval 0.0/0.15/0.3/0.45 → 1.0），4 个建议卡片从下方 50px 滑入 + elasticOut 弹性回弹（500ms），SingleTickerProviderStateMixin
+- `chat_screen.dart` — ChatBubble 替换为 AnimatedChatBubble
+
+### 多目标识别页面（差异化亮点）
+- `screens/multi_object_screen.dart` — TickerProviderStateMixin + ripple 展开动画，3 个模拟检测框（左上白鞋/右上黑包/中间手机），点击弹出 BottomSheet 商品详情，从 HomeScreen 入口进入
+
+### Mock 数据扩充
+- `backend/app/services/comparison.py` — 从 ~20 条扩充到 **300 条**
+- 4 大品类：运动鞋(Nike/Adidas) 60 / 数码(Apple/小米) 75 / 美妆(雅诗兰黛/兰蔻) 90 / 家居(无印良品/IKEA) 75
+- 每品牌 3 款 × 3 平台(mock_jd/mock_taobao/mock_pdd)
+- 图片 URL：`https://via.placeholder.com/300x300/00B4D8/FFFFFF?text=...`
+- 价格策略：京东基准，淘宝 0.95-1.1 倍，拼多多 0.85-0.95 倍
+- 评分 4.5-5.0，标签（自营/官方/包邮/百亿补贴/假一赔十）
+- 划线价 = 价格 × 1.1-1.3
+
+### 静态分析修复
+- 修复 `use_build_context_synchronously`（HomeScreen 异步后加 mounted 检查）
+- 修复 7 处 `prefer_const_constructors`（report_screen / trend_screen）
+- 移除 test/widget_test.dart 未使用 import
+
+### 构建验证
+- `flutter analyze` — ✅ 0 issues（无 errors，无 warnings，无 infos）
+- `flutter build apk --debug` — ✅ 成功（35.3s）
+
+### Git 提交记录
+```
+495eb8f data(batch5): expand mock products to 200+ with images and realistic prices
+9a4a7df feat(batch2+3): ScanLineOverlay, ShimmerCard, AnimatedChatBubble, result screen animations
+a204c26 feat(batch4): MultiObjectScreen with ripple detection boxes + home entry
+b496920 feat(batch1): Motion Tokens + BottomNavBar integrated into HomeScreen
+```
+
+---
+
+**请基于以上上下文继续推进项目。当前下一步是 Day 6 (5.26) 的响应式适配 + 打磨收尾：**
+- 不同屏幕尺寸适配（小屏/大屏/平板）
+- 深色模式支持
+- 性能优化（图片缓存、列表懒加载）
+- 无障碍支持（语义标签、焦点管理）
+- 边缘 case 处理（无网络、无摄像头权限、后端不可用）

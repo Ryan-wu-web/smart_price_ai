@@ -105,7 +105,7 @@ class ReportScreen extends StatelessWidget {
         color: Constants.surfaceColor,
         borderRadius: BorderRadius.circular(Constants.radiusLarge),
         boxShadow: const [Constants.shadowCard],
-        border: Border(left: BorderSide(color: Constants.brandColor, width: 3)),
+        border: const Border(left: BorderSide(color: Constants.brandColor, width: 3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +122,8 @@ class ReportScreen extends StatelessWidget {
                 child: const Icon(Icons.emoji_events, color: Constants.successColor, size: 18),
               ),
               const SizedBox(width: Constants.space12),
-              Text('最优选择', style: Constants.h2),
+              const Text('最优选择', style: Constants.h2),
+              const Spacer(),
             ],
           ),
           const SizedBox(height: Constants.space16),
@@ -130,6 +131,7 @@ class ReportScreen extends StatelessWidget {
           _buildInfoRow('价格', '¥749', isHighlight: true),
           _buildInfoRow('优惠', '↓16%'),
           _buildInfoRow('理由', '90天最低价，官方旗舰店'),
+          const SizedBox.shrink(),
         ],
       ),
     );
@@ -177,7 +179,8 @@ class ReportScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('其他选择', style: Constants.h2),
+          const Text('其他选择', style: Constants.h2),
+          const SizedBox.shrink(),
           const SizedBox(height: Constants.space12),
           _buildAlternativeItem('淘宝', '¥799', '官方店'),
           const Divider(height: 16),
@@ -229,7 +232,7 @@ class ReportScreen extends StatelessWidget {
                 child: const Icon(Icons.lightbulb, color: Constants.brandColor, size: 18),
               ),
               const SizedBox(width: Constants.space12),
-              Text('AI 建议', style: Constants.h2),
+              const Text('AI 建议', style: Constants.h2),
             ],
           ),
           const SizedBox(height: Constants.space12),

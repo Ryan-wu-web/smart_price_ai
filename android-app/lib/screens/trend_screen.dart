@@ -99,7 +99,7 @@ class TrendScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('90天价格走势', style: Constants.h2),
+          const Text('90天价格走势', style: Constants.h2),
           const SizedBox(height: Constants.space12),
           Expanded(
             child: Container(
@@ -150,7 +150,8 @@ class TrendScreen extends StatelessWidget {
                 child: const Icon(Icons.auto_awesome, color: Constants.brandColor, size: 18),
               ),
               const SizedBox(width: Constants.space12),
-              Text('AI 价格分析', style: Constants.h2),
+              const Text('AI 价格分析', style: Constants.h2),
+              const Spacer(),
             ],
           ),
           const SizedBox(height: Constants.space12),

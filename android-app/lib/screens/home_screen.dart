@@ -102,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (result != null) {
         await _saveRecentRecord(result, picked.path);
+        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
