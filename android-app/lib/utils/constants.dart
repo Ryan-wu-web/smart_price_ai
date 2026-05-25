@@ -167,4 +167,19 @@ class Constants {
   static const Duration defaultAnimationDuration = Duration(milliseconds: 300);
   static const Duration staggerDelay = Duration(milliseconds: 100);
   static const Curve defaultCurve = Curves.easeOutCubic;
+
+  // ═══════════════════════════════════════════
+  //  动画 Token (Motion Tokens) — Day 5 新增
+  // ═══════════════════════════════════════════
+  static const Duration durationFast = Duration(milliseconds: 150);
+  static const Duration durationNormal = Duration(milliseconds: 300);
+  static const Duration durationSlow = Duration(milliseconds: 500);
+
+  static const Curve easeSpring = Curves.elasticOut;
+  static const Curve easeEntrance = Curves.easeOutCubic;
+  static const Curve easeExit = Curves.easeInCubic;
+  static const Curve easeBounce = Curves.bounceOut;
+
+  static const Duration staggerDelayFast = Duration(milliseconds: 80);
+
 }

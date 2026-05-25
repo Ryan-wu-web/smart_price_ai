@@ -9,6 +9,7 @@ import '../utils/constants.dart';
 import 'chat_screen.dart';
 import 'compare_screen.dart';
 import 'result_screen.dart';
+import '../widgets/bottom_nav_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -408,75 +409,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: const BoxDecoration(
-          color: Constants.surfaceColor,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(Constants.radiusXLarge),
-            topRight: Radius.circular(Constants.radiusXLarge),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 20,
-              offset: Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Constants.backgroundColor,
-                    borderRadius: BorderRadius.circular(Constants.radiusMedium),
-                  ),
-                  child: const Icon(
-                    Icons.mic,
-                    color: Constants.secondaryTextColor,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Constants.backgroundColor,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          style: TextStyle(
-                            color: Constants.primaryTextColor,
-                            fontSize: 14,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '试试语音输入...',
-                            hintStyle: TextStyle(
-                              color: Constants.tertiaryTextColor,
-                              fontSize: 14,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 0,
+        onTap: (index) {
+          if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ChatScreen()),
+            );
+          }
+        },
       ),
     );
   }
