@@ -136,6 +136,26 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
+  Widget _buildAnimatedSuggestionCard({
+    required int index,
+    required Widget child,
+  }) {
+    final animation = CurvedAnimation(
+      parent: _staggerController,
+      curve: Interval(0.3 + index * 0.12, 1.0, curve: Curves.easeOutCubic),
+    );
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, 0.4),
+        end: Offset.zero,
+      ).animate(animation),
+      child: FadeTransition(
+        opacity: Tween<double>(begin: 0, end: 1).animate(animation),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final confidence = _result.confidence;
@@ -297,20 +317,11 @@ class _ResultScreenState extends State<ResultScreen>
                     height: 140,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      physics: const BouncingScrollPhysics(),
                       children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 50.0, end: 0.0),
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.elasticOut,
-                          builder: (context, value, child) {
-                            return Opacity(
-                              opacity: (50 - value) / 50,
-                              child: Transform.translate(
-                                offset: Offset(0, value),
-                                child: child,
-                              ),
-                            );
-                          },
+                        _buildAnimatedSuggestionCard(
+                          index: 0,
                           child: SuggestionCard(
                             icon: Icons.compare_arrows,
                             title: '查看同款低价',
@@ -329,19 +340,8 @@ class _ResultScreenState extends State<ResultScreen>
                             },
                           ),
                         ),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 50.0, end: 0.0),
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.elasticOut,
-                          builder: (context, value, child) {
-                            return Opacity(
-                              opacity: (50 - value) / 50,
-                              child: Transform.translate(
-                                offset: Offset(0, value),
-                                child: child,
-                              ),
-                            );
-                          },
+                        _buildAnimatedSuggestionCard(
+                          index: 1,
                           child: SuggestionCard(
                             icon: Icons.store,
                             title: '官方旗舰店',
@@ -357,19 +357,8 @@ class _ResultScreenState extends State<ResultScreen>
                             },
                           ),
                         ),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 50.0, end: 0.0),
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.elasticOut,
-                          builder: (context, value, child) {
-                            return Opacity(
-                              opacity: (50 - value) / 50,
-                              child: Transform.translate(
-                                offset: Offset(0, value),
-                                child: child,
-                              ),
-                            );
-                          },
+                        _buildAnimatedSuggestionCard(
+                          index: 2,
                           child: SuggestionCard(
                             icon: Icons.trending_up,
                             title: '价格走势',
@@ -388,19 +377,8 @@ class _ResultScreenState extends State<ResultScreen>
                             },
                           ),
                         ),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 50.0, end: 0.0),
-                          duration: const Duration(milliseconds: 500),
-                          curve: Curves.elasticOut,
-                          builder: (context, value, child) {
-                            return Opacity(
-                              opacity: (50 - value) / 50,
-                              child: Transform.translate(
-                                offset: Offset(0, value),
-                                child: child,
-                              ),
-                            );
-                          },
+                        _buildAnimatedSuggestionCard(
+                          index: 3,
                           child: SuggestionCard(
                             icon: Icons.recommend,
                             title: '相似推荐',

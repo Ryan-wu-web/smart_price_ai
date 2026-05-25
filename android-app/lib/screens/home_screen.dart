@@ -84,12 +84,17 @@ class _HomeScreenState extends State<HomeScreen> {
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black,
+      barrierColor: Colors.transparent,
       transitionDuration: Constants.durationNormal,
       pageBuilder: (_, __, ___) {
         return ScanLineOverlay(
           statusText: 'AI 正在识别...',
-          child: Container(color: Colors.black),
+          child: Image.file(
+            file,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          ),
         );
       },
     );
