@@ -8,8 +8,10 @@ import '../services/api_service.dart';
 import '../utils/constants.dart';
 import 'chat_screen.dart';
 import 'compare_screen.dart';
+import 'multi_object_screen.dart';
 import 'result_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/scan_line_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -79,10 +81,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final file = File(picked.path);
 
     if (!mounted) return;
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Constants.brandColor)),
+      barrierColor: Colors.black,
+      transitionDuration: Constants.durationNormal,
+      pageBuilder: (_, __, ___) {
+        return ScanLineOverlay(
+          child: Container(color: Colors.black),
+          statusText: 'AI 正在识别...',
+        );
+      },
     );
 
     try {
@@ -114,6 +123,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _pickMultiObjectImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200);
+    if (picked == null) return;
+    final file = File(picked.path);
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiObjectScreen(imageFile: file),
+      ),
+    );
   }
 
   void _showImageSourceDialog() {
@@ -314,6 +337,52 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.white.withOpacity(0.85),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  _pickMultiObjectImage();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Constants.surfaceColor,
+                    borderRadius: BorderRadius.circular(Constants.radiusLarge),
+                    boxShadow: const [Constants.shadowCard],
+                    border: Border.all(color: Constants.brandColor.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.grid_view, color: Constants.brandColor),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '多目标识别',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Constants.primaryTextColor,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              '拍一张场景照，AI 识别图中多个商品',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Constants.secondaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, size: 14, color: Constants.tertiaryTextColor),
                     ],
                   ),
                 ),

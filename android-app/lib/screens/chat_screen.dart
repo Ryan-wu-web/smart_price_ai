@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
 import '../widgets/chat_bubble.dart';
+import '../widgets/animated_chat_bubble.dart';
 import 'report_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -352,7 +353,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (msg.action == 'report' && msg.actionData != null) {
                   return _buildDecisionCard(msg.actionData!);
                 }
-                return ChatBubble(message: msg);
+                return AnimatedChatBubble(message: msg, index: index);
               },
             ),
           ),

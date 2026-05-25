@@ -3,6 +3,7 @@ import '../models/product.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/product_card.dart';
+import '../widgets/shimmer_card.dart';
 import 'chat_screen.dart';
 
 class CompareScreen extends StatefulWidget {
@@ -133,8 +134,10 @@ class _CompareScreenState extends State<CompareScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Constants.brandColor),
+                ? ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 3,
+                    itemBuilder: (_, __) => const ShimmerCard(),
                   )
                 : _products.isEmpty
                     ? Center(
