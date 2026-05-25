@@ -36,6 +36,8 @@ class ProductBase(BaseModel):
     platform: str
     rating: float = Field(default=0.0, ge=0, le=5)
     tags: list[str] = Field(default_factory=list)
+    original_price: float = Field(default=0.0, ge=0)
+    image_url: str = Field(default="")
 
 
 class ProductResponse(ProductBase):
