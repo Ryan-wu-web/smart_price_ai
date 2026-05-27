@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import '../models/product.dart';
 import '../models/recognition_result.dart';
 import '../utils/constants.dart';
+import '../utils/error_messages.dart';
+import '../utils/network_checker.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -21,6 +23,9 @@ class ApiService {
   final String _baseUrl = Constants.apiBaseUrl;
 
   Future<RecognitionResult?> recognize(File image) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     final bytes = await image.readAsBytes();
     final base64Image = base64Encode(bytes);
 
@@ -41,7 +46,7 @@ class ApiService {
         throw ApiException('识别失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 
@@ -50,6 +55,9 @@ class ApiService {
     String? brand,
     String? color,
   }) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     final queryParams = <String, String>{'category': category};
     if (brand != null) queryParams['brand'] = brand;
     if (color != null) queryParams['color'] = color;
@@ -73,7 +81,7 @@ class ApiService {
         throw ApiException('获取建议失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 
@@ -83,6 +91,9 @@ class ApiService {
     String? color,
     String? sortBy,
   }) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     final queryParams = <String, String>{'category': category};
     if (brand != null) queryParams['brand'] = brand;
     if (color != null) queryParams['color'] = color;
@@ -107,11 +118,14 @@ class ApiService {
         throw ApiException('比价失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 
   Future<List<Product>> sendFilter(String query) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/filter'),
@@ -132,11 +146,14 @@ class ApiService {
         throw ApiException('筛选失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 
   Future<Map<String, dynamic>?> getTrend(String productId) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     try {
       final response = await http
           .get(Uri.parse('$_baseUrl/api/v1/trend/$productId'))
@@ -148,11 +165,14 @@ class ApiService {
         throw ApiException('获取价格走势失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 
   Future<Map<String, dynamic>?> generateReport(String productId) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/report'),
@@ -166,7 +186,7 @@ class ApiService {
         throw ApiException('生成报告失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 
@@ -175,6 +195,9 @@ class ApiService {
     String? sessionId,
     Map<String, dynamic>? currentProduct,
   }) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
     final body = <String, dynamic>{
       'message': message,
     };
@@ -198,7 +221,7 @@ class ApiService {
         throw ApiException('发送消息失败: ${response.statusCode}');
       }
     } on TimeoutException catch (_) {
-      throw ApiException('请求超时，请检查网络后重试');
+      throw ApiException(ErrorMessages.timeout);
     }
   }
 }
