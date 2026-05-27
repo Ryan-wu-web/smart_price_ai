@@ -29,6 +29,8 @@ class _ShimmerCardState extends State<ShimmerCard>
 
   @override
   Widget build(BuildContext context) {
+    final imageSize = (MediaQuery.of(context).size.width * 0.22).clamp(80.0, 120.0);
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -59,8 +61,8 @@ class _ShimmerCardState extends State<ShimmerCard>
         child: Row(
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: imageSize,
+              height: imageSize,
               decoration: BoxDecoration(
                 color: const Color(0xFFE9ECEF),
                 borderRadius: BorderRadius.circular(8),
