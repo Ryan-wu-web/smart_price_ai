@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/recognition_result.dart';
 import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
+import '../widgets/responsive_layout.dart';
 import '../widgets/suggestion_card.dart';
 import 'chat_screen.dart';
 import 'compare_screen.dart';
@@ -74,6 +75,11 @@ class _ResultScreenState extends State<ResultScreen>
             onPressed: () {
               onConfirm(controller.text);
               Navigator.pop(context);
+              final focusContext = context;
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (!focusContext.mounted) return;
+                FocusScope.of(focusContext).requestFocus(FocusNode());
+              });
             },
             child: const Text('确定', style: TextStyle(color: Constants.brandColor)),
           ),
@@ -164,6 +170,12 @@ class _ResultScreenState extends State<ResultScreen>
         : confidence >= 0.5
             ? '中等置信度'
             : '低置信度';
+    final imageHeight = (MediaQuery.of(context).size.height * 0.25).clamp(180.0, 280.0);
+    final listHeight = ResponsiveLayout.value(context,
+      small: 130.0,
+      medium: 140.0,
+      large: 150.0,
+    );
 
     return Scaffold(
       backgroundColor: Constants.backgroundColor,
@@ -213,7 +225,7 @@ class _ResultScreenState extends State<ResultScreen>
                 children: [
                   Container(
                     width: double.infinity,
-                    height: 220,
+                    height: imageHeight,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(Constants.largeRadius),
                       color: const Color(0xFFE8E8ED),
@@ -314,7 +326,7 @@ class _ResultScreenState extends State<ResultScreen>
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 140,
+                    height: listHeight,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       clipBehavior: Clip.none,
