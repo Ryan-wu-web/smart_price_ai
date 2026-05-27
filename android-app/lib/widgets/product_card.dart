@@ -14,6 +14,8 @@ class ProductCard extends StatelessWidget {
         ? product.originalPrice! - product.price
         : 0.0;
 
+    final imageSize = (MediaQuery.of(context).size.width * 0.22).clamp(80.0, 120.0);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -28,8 +30,8 @@ class ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: imageSize,
+              height: imageSize,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(Constants.mediumRadius),
                 gradient: const LinearGradient(
