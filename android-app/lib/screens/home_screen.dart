@@ -192,6 +192,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: const Text('拍照'),
                 onTap: () {
                   Navigator.pop(context);
+                  final focusContext = context;
+                  Future.delayed(Duration.zero, () {
+                    if (!focusContext.mounted) return;
+                    FocusScope.of(focusContext).requestFocus(FocusNode());
+                  });
                   _pickImage(ImageSource.camera);
                 },
               ),
@@ -200,6 +205,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: const Text('从相册选择'),
                 onTap: () {
                   Navigator.pop(context);
+                  final focusContext = context;
+                  Future.delayed(Duration.zero, () {
+                    if (!focusContext.mounted) return;
+                    FocusScope.of(focusContext).requestFocus(FocusNode());
+                  });
                   _pickImage(ImageSource.gallery);
                 },
               ),
