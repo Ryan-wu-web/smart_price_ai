@@ -49,9 +49,13 @@ class BottomNavBar extends StatelessWidget {
 
   Widget _buildItem(IconData icon, String label, int index) {
     final isSelected = currentIndex == index;
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: AnimatedContainer(
+    return Semantics(
+      label: label,
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        child: AnimatedContainer(
         duration: Constants.durationFast,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
@@ -82,6 +86,7 @@ class BottomNavBar extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
