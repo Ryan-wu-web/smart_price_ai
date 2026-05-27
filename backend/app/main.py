@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.middleware.error_handler import global_exception_handler
 from app.routers import recognize, suggest, compare, filter, trend, report, chat
 
 app = FastAPI(
@@ -24,6 +25,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.add_exception_handler(Exception, global_exception_handler)
 
 app.include_router(recognize.router)
 app.include_router(suggest.router)
