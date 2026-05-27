@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import 'responsive_layout.dart';
 
 class SuggestionCard extends StatelessWidget {
   final IconData icon;
@@ -19,10 +20,15 @@ class SuggestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardWidth = ResponsiveLayout.value(context,
+      small: 130.0,
+      medium: 150.0,
+      large: 170.0,
+    );
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140,
+        width: cardWidth,
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
