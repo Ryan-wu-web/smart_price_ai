@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recognition_result.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
+import '../utils/error_messages.dart';
+import '../widgets/responsive_layout.dart';
 import 'chat_screen.dart';
 import 'compare_screen.dart';
 import 'multi_object_screen.dart';
@@ -75,7 +78,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, maxWidth: 1200);
+    XFile? picked;
+    try {
+      picked = await picker.pickImage(source: source, maxWidth: 1200);
+    } on PlatformException catch (e) {
+      if (e.code == 'camera_access_denied') {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('需要相机权限'),
+            content: const Text(ErrorMessages.cameraDenied),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
     if (picked == null) return;
 
     final file = File(picked.path);
@@ -299,7 +323,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: _showImageSourceDialog,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(28),
+                  padding: EdgeInsets.all(ResponsiveLayout.value(context,
+                    small: 20.0,
+                    medium: 28.0,
+                    large: 36.0,
+                  )),
                   decoration: BoxDecoration(
                     gradient: Constants.brandGradient,
                     borderRadius: BorderRadius.circular(Constants.xLargeRadius),
@@ -430,8 +458,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: _recentRecords.length,
                     itemBuilder: (_, index) {
                       final record = _recentRecords[index];
+                      final recentCardWidth = ResponsiveLayout.value(context,
+                        small: 120.0,
+                        medium: 140.0,
+                        large: 160.0,
+                      );
                       return Container(
-                        width: 140,
+                        width: recentCardWidth,
                         margin: const EdgeInsets.only(right: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
