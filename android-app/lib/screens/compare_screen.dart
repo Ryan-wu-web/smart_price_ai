@@ -95,13 +95,9 @@ class _CompareScreenState extends State<CompareScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _filters.length,
-              itemBuilder: (_, index) {
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tags = List.generate(_filters.length, (index) {
                 final isSelected = _selectedFilter == index;
                 return GestureDetector(
                   onTap: () {
@@ -128,8 +124,22 @@ class _CompareScreenState extends State<CompareScreen> {
                     ),
                   ),
                 );
-              },
-            ),
+              });
+              if (constraints.maxWidth > 420) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Wrap(spacing: 10, children: tags),
+                );
+              }
+              return SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: tags,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 8),
           Expanded(

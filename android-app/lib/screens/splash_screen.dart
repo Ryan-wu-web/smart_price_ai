@@ -83,10 +83,15 @@ class _SplashScreenState extends State<SplashScreen>
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
+            child: Builder(
+            builder: (context) {
+              final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+              final topFlex = isLandscape ? 1 : 3;
+              final bottomFlex = isLandscape ? 2 : 4;
+              return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Spacer(flex: 3),
+                Spacer(flex: topFlex),
                 FadeTransition(
                   opacity: _titleOpacity,
                   child: const Text(
@@ -113,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                 ),
-                const Spacer(flex: 4),
+                Spacer(flex: bottomFlex),
                 FadeTransition(
                   opacity: _buttonOpacity,
                   child: Center(
@@ -169,10 +174,12 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 48),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

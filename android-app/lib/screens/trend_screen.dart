@@ -29,7 +29,7 @@ class TrendScreen extends StatelessWidget {
           children: [
             _buildProductHeader(),
             const SizedBox(height: Constants.space20),
-            _buildChartPlaceholder(),
+            _buildChartPlaceholder(context),
             const SizedBox(height: Constants.space20),
             _buildAIAnalysisCard(),
             const SizedBox(height: Constants.space20),
@@ -87,9 +87,10 @@ class TrendScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildChartPlaceholder() {
+  Widget _buildChartPlaceholder(BuildContext context) {
+    final chartHeight = (MediaQuery.of(context).size.height * 0.28).clamp(180.0, 300.0);
     return Container(
-      height: 220,
+      height: chartHeight,
       padding: const EdgeInsets.all(Constants.space16),
       decoration: BoxDecoration(
         color: Constants.surfaceColor,
