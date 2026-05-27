@@ -213,9 +213,62 @@ b496920 feat(batch1): Motion Tokens + BottomNavBar integrated into HomeScreen
 
 ---
 
-**请基于以上上下文继续推进项目。当前下一步是 Day 6 (5.26) 的响应式适配 + 打磨收尾：**
-- 不同屏幕尺寸适配（小屏/大屏/平板）
-- 深色模式支持
-- 性能优化（图片缓存、列表懒加载）
-- 无障碍支持（语义标签、焦点管理）
-- 边缘 case 处理（无网络、无摄像头权限、后端不可用）
+---
+
+## Day 6 (5.27) 更新 — 响应式适配 + 边缘 Case + 无障碍 + 后端异常中间件
+
+### 响应式适配
+- 新增 `widgets/responsive_layout.dart` — `ResponsiveLayout` 工具类，3 档断点（small<360 / medium 360-420 / large>420）
+- `widgets/suggestion_card.dart` — 固定宽度 140px → 三档自适应（130/150/170）
+- `widgets/product_card.dart` — 图片固定 100x100 → `screenWidth * 0.22`（clamp 80-120）
+- `widgets/shimmer_card.dart` — 骨架图片尺寸同步 ProductCard
+- `screens/home_screen.dart` — 最近识别卡片宽度自适应（120/140/160），拍照按钮 padding 自适应（20/28/36）
+- `screens/result_screen.dart` — 图片高度 `screenHeight * 0.25`（clamp 180-280），建议列表高度三档（130/140/150）
+- `screens/compare_screen.dart` — 筛选标签大屏（>420）自动换行（Wrap），小屏保持横向滚动
+- `screens/trend_screen.dart` — 走势图高度 `screenHeight * 0.28`（clamp 180-300）
+- `screens/splash_screen.dart` — 横屏时 Spacer flex 减少（3/4 → 1/2）
+- `screens/chat_screen.dart` — 决策卡片最大宽度限制 600px + Center
+
+### 边缘 Case
+- 新增 `utils/network_checker.dart` — `connectivity_plus` 网络预检
+- 新增 `utils/error_messages.dart` — 统一错误文案（timeout/serverError/noInternet/cameraDenied）
+- `services/api_service.dart` — 所有 7 个接口请求前检查网络，无网络直接抛异常不上传请求
+- `screens/home_screen.dart` — 捕获 `PlatformException`（camera_access_denied），弹窗引导用户
+
+### 无障碍
+- `widgets/bottom_nav_bar.dart` — 4 个 tab 添加 `Semantics(label, button, selected)`
+- `screens/result_screen.dart` — 属性编辑弹窗关闭后焦点返回
+- `screens/home_screen.dart` — 图片来源弹窗关闭后焦点返回
+
+### 后端全局异常中间件
+- 新增 `backend/app/middleware/error_handler.py` — 统一捕获未处理异常，返回结构化 JSON：`{"detail": "...", "code": "INTERNAL_ERROR", "path": "..."}`
+- `backend/app/main.py` — 注册 `app.add_exception_handler(Exception, global_exception_handler)`
+
+### 构建验证
+- `flutter analyze` — ✅ 0 issues
+- `flutter build apk --debug` — ✅ 成功（52.6s）
+- `pytest backend/tests/` — ✅ 25/25 PASS
+
+### Git 提交记录
+```
+4b3a984 feat(day6-backend): register global exception handler in FastAPI
+0e44273 a11y(day6): return focus after image source dialog closes
+becb242 feat(day6): ApiService network pre-check + unified ErrorMessages
+7b7bc5f feat(day6-responsive): CompareScreen Wrap filter + TrendScreen chart height + SplashScreen landscape + ChatScreen maxWidth
+7a9d1c6 feat(day6): ResultScreen responsive image/list height + focus management
+99a78b6 feat(day6): HomeScreen responsive cards/button + camera permission handling
+60a5c84 feat(day6-responsive): SuggestionCard adaptive width via ResponsiveLayout
+7aaf527 feat(day6-responsive): ProductCard image size relative to screen width
+0c0f6e9 feat(day6-responsive): ShimmerCard image size sync with ProductCard
+6fefc53 a11y(day6): add Semantics labels to BottomNavBar tabs
+4368a41 feat(day6-infra): add NetworkChecker with connectivity_plus
+aa26adc feat(day6-infra): add ErrorMessages utility for unified error copy
+7ab3e83 feat(day6-infra): add ResponsiveLayout utility with 3 breakpoints
+```
+
+---
+
+**请基于以上上下文继续推进项目。当前下一步是 Day 7 (5.28) 的功能补全 I：**
+- 底部导航「历史」「我的」页面
+- 多目标识别真实逻辑
+- 建议卡片 API 对接
