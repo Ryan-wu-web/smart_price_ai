@@ -117,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
       transitionDuration: Constants.durationNormal,
       pageBuilder: (_, __, ___) {
         return ScanLineOverlay(
-          statusText: 'AI 正在识别...',
           child: Image.file(
             file,
             fit: BoxFit.cover,
