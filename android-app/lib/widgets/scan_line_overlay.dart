@@ -19,6 +19,12 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
+  final List<String> _statusTexts = [
+    'AI 正在识别...',
+    '分析商品特征...',
+    '生成比价方案...',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +39,29 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  String _getStatusText(double value) {
+    final index = (value * 3).floor() % 3;
+    return _statusTexts[index];
+  }
+
+  Widget _buildPulseDot(double delay) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final value = (_controller.value + delay) % 1.0;
+        final opacity = value < 0.5 ? value * 2 : (1 - value) * 2;
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: Constants.brandColor.withOpacity(opacity),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -78,35 +107,48 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
             ),
           ),
         ),
-        Positioned(
-          top: screenHeight * 0.6 + 24,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Text(
-              widget.statusText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    color: Colors.black54,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
+        AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Positioned(
+              top: screenHeight * 0.6 + 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  _getStatusText(_controller.value),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
         Positioned(
           top: screenHeight * 0.6 + 56,
-          left: 64,
-          right: 64,
-          child: const LinearProgressIndicator(
-            backgroundColor: Colors.white24,
-            valueColor: AlwaysStoppedAnimation<Color>(Constants.brandColor),
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildPulseDot(0.0),
+                const SizedBox(width: 8),
+                _buildPulseDot(0.33),
+                const SizedBox(width: 8),
+                _buildPulseDot(0.66),
+              ],
+            ),
           ),
         ),
       ],

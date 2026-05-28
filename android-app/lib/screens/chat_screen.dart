@@ -313,7 +313,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         title: const Row(
           children: [
-            Icon(Icons.smart_toy, color: Constants.brandColor, size: 22),
+            Icon(Icons.auto_awesome, color: Constants.brandColor, size: 22),
             SizedBox(width: 8),
             Text(
               'AI 购物助手',
