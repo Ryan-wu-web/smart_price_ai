@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/recognition_result.dart';
 import '../utils/constants.dart';
+import '../utils/error_messages.dart';
+import '../services/api_service.dart';
 import '../widgets/bottom_input_bar.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/suggestion_card.dart';
@@ -28,6 +30,7 @@ class _ResultScreenState extends State<ResultScreen>
   late RecognitionResult _result;
   final TextEditingController _inputController = TextEditingController();
   late AnimationController _staggerController;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -359,16 +362,46 @@ class _ResultScreenState extends State<ResultScreen>
                             title: '官方旗舰店',
                             subtitle: '正品保障',
                             iconColor: Colors.blue,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('功能开发中，敬请期待'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                            onTap: () async {
+                              setState(() => _isLoading = true);
+                              final scaffold = ScaffoldMessenger.of(context);
+                              final nav = Navigator.of(context);
+                              try {
+                                final products = await ApiService().getSuggestions(
+                                  _result.category ?? '',
+                                  brand: _result.brand,
+                                );
+                                final official = products.where((p) =>
+                                  (p.tags?.contains('自营') ?? false) || (p.tags?.contains('官方') ?? false)
+                                ).toList();
+                                if (!mounted) return;
+                                if (official.isNotEmpty) {
+                                  scaffold.showSnackBar(
+                                    const SnackBar(content: Text('已为您找到官方商品')),
+                                  );
+                                }
+                                nav.push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CompareScreen(
+                                      category: _result.category ?? '',
+                                      brand: _result.brand,
+                                      color: _result.color,
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                scaffold.showSnackBar(
+                                  const SnackBar(content: Text(ErrorMessages.compareFailed)),
+                                );
+                              } finally {
+                                if (mounted) setState(() => _isLoading = false);
+                              }
                             },
                           ),
                         ),
+                        if (_isLoading)
+                          const Center(child: CircularProgressIndicator()),
                         _buildAnimatedSuggestionCard(
                           index: 2,
                           child: SuggestionCard(
@@ -396,13 +429,35 @@ class _ResultScreenState extends State<ResultScreen>
                             title: '相似推荐',
                             subtitle: '更多类似商品',
                             iconColor: Colors.purple,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('功能开发中，敬请期待'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                            onTap: () async {
+                              setState(() => _isLoading = true);
+                              final scaffold = ScaffoldMessenger.of(context);
+                              final nav = Navigator.of(context);
+                              try {
+                                final products = await ApiService().getSuggestions(
+                                  _result.category ?? '',
+                                );
+                                if (!mounted) return;
+                                if (products.isNotEmpty) {
+                                  scaffold.showSnackBar(
+                                    const SnackBar(content: Text('已为您找到相似商品')),
+                                  );
+                                }
+                                nav.push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CompareScreen(
+                                      category: _result.category ?? '',
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                scaffold.showSnackBar(
+                                  const SnackBar(content: Text(ErrorMessages.compareFailed)),
+                                );
+                              } finally {
+                                if (mounted) setState(() => _isLoading = false);
+                              }
                             },
                           ),
                         ),
