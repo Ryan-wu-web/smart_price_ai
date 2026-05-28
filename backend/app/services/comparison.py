@@ -153,6 +153,14 @@ class MockDataSource(DataSource):
                     "image_url": image_url,
                 })
 
+        self.category_groups = {
+            "运动鞋": ["运动鞋", "休闲鞋"],
+            "数码": ["手机", "耳机", "平板", "键盘", "鼠标", "充电器"],
+            "服饰": ["T恤", "牛仔裤", "外套", "卫衣", "运动裤", "袜子"],
+            "美妆": ["口红", "面膜", "香水", "护肤套装", "精华"],
+            "家居": ["收纳盒", "台灯", "抱枕", "厨具", "杯子", "床上用品"],
+        }
+
         for i, item in enumerate(self.MOCK_PRODUCTS):
             self._data.append(
                 ProductResponse(
@@ -169,8 +177,9 @@ class MockDataSource(DataSource):
         logger = logging.getLogger(__name__)
         logger.info(f"[MockDataSource] search called: category={category}, brand={brand}, color={color}")
         
-        # 第一步：精确匹配 category
-        results = [p for p in self._data if p.category == category]
+        # 第一步：精确匹配 category（支持 group 映射）
+        target_categories = self.category_groups.get(category, [category])
+        results = [p for p in self._data if p.category in target_categories]
         logger.info(f"[MockDataSource] exact category match: {len(results)} items")
         
         # 第二步：如果精确匹配为空，尝试包含匹配
