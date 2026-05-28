@@ -11,8 +11,11 @@ import '../utils/error_messages.dart';
 import '../widgets/responsive_layout.dart';
 import 'chat_screen.dart';
 import 'compare_screen.dart';
+import 'history_screen.dart';
 import 'multi_object_screen.dart';
+import 'profile_screen.dart';
 import 'result_screen.dart';
+import 'search_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/scan_line_overlay.dart';
 
@@ -72,6 +75,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'recent_records',
       _recentRecords.map((e) => jsonEncode(e)).toList(),
     );
+    final currentCount = prefs.getInt('scan_count') ?? 0;
+    await prefs.setInt('scan_count', currentCount + 1);
     if (!mounted) return;
     setState(() {});
   }
@@ -264,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    MaterialPageRoute(builder: (_) => const SearchScreen()),
                   );
                 },
                 child: Container(
@@ -530,10 +535,20 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavBar(
         currentIndex: 0,
         onTap: (index) {
-          if (index == 2) {
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HistoryScreen()),
+            );
+          } else if (index == 2) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ChatScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
             );
           }
         },
