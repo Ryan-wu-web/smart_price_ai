@@ -3,12 +3,10 @@ import '../utils/constants.dart';
 
 class ScanLineOverlay extends StatefulWidget {
   final Widget child;
-  final String statusText;
 
   const ScanLineOverlay({
     super.key,
     required this.child,
-    this.statusText = 'AI 正在识别...',
   });
 
   @override
@@ -18,12 +16,6 @@ class ScanLineOverlay extends StatefulWidget {
 class _ScanLineOverlayState extends State<ScanLineOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-
-  final List<String> _statusTexts = [
-    'AI 正在识别...',
-    '分析商品特征...',
-    '生成比价方案...',
-  ];
 
   @override
   void initState() {
@@ -41,23 +33,32 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
     super.dispose();
   }
 
-  String _getStatusText(double value) {
-    final index = (value * 3).floor() % 3;
-    return _statusTexts[index];
-  }
-
   Widget _buildPulseDot(double delay) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final value = (_controller.value + delay) % 1.0;
         final opacity = value < 0.5 ? value * 2 : (1 - value) * 2;
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: Constants.brandColor.withOpacity(opacity),
-            shape: BoxShape.circle,
+        // 最小不透明度 0.5，确保始终可见；最大 1.0
+        final visibleOpacity = 0.5 + opacity * 0.5;
+        // 脉冲缩放：0.8 ~ 1.3
+        final scale = 0.8 + opacity * 0.5;
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Constants.brandColor.withOpacity(visibleOpacity),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Constants.brandColor.withOpacity(visibleOpacity * 0.6),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -72,14 +73,16 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
       fit: StackFit.expand,
       children: [
         widget.child,
+        // 暗化遮罩
         Container(
-          color: Colors.black.withOpacity(0.3),
+          color: Colors.black.withOpacity(0.25),
         ),
+        // 扫描线
         AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
             return Positioned(
-              top: _controller.value * screenHeight * 0.6,
+              top: _controller.value * screenHeight * 0.65,
               left: 0,
               right: 0,
               child: child!,
@@ -88,54 +91,28 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
           child: Container(
             height: 2,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
                   Colors.transparent,
-                  Constants.brandColor.withOpacity(0.8),
-                  Constants.brandColor.withOpacity(0.8),
+                  Constants.brandColor,
+                  Constants.brandColor,
                   Colors.transparent,
                 ],
-                stops: const [0.0, 0.3, 0.7, 1.0],
+                stops: [0.0, 0.25, 0.75, 1.0],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Constants.brandColor.withOpacity(0.5),
-                  blurRadius: 10,
-                  spreadRadius: 2,
+                  color: Constants.brandColor.withOpacity(0.6),
+                  blurRadius: 12,
+                  spreadRadius: 3,
                 ),
               ],
             ),
           ),
         ),
-        AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return Positioned(
-              top: screenHeight * 0.6 + 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  _getStatusText(_controller.value),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black54,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+        // 脉冲圆点（屏幕下方居中）
         Positioned(
-          top: screenHeight * 0.6 + 56,
+          top: screenHeight * 0.72,
           left: 0,
           right: 0,
           child: Center(
@@ -143,9 +120,9 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildPulseDot(0.0),
-                const SizedBox(width: 8),
+                const SizedBox(width: 14),
                 _buildPulseDot(0.33),
-                const SizedBox(width: 8),
+                const SizedBox(width: 14),
                 _buildPulseDot(0.66),
               ],
             ),
