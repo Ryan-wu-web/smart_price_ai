@@ -270,38 +270,69 @@ aa26adc feat(day6-infra): add ErrorMessages utility for unified error copy
 
 ---
 
-## Day 7 (5.28) 计划 — 功能补全 I
+## Day 7 (5.28) 更新 — 功能补全 I
+
+### 后端修复
+- `backend/app/services/comparison.py` — 新增 `CATEGORY_GROUPS` 映射（"数码"→["手机","耳机",...]），修复分类过滤时大品类无法匹配到子品类商品的问题
+- `backend/tests/` — 分类映射测试 5/5 PASS
+
+### 扫描线美化（批次2 + 修复）
+- `widgets/scan_line_overlay.dart` — 删除 `LinearProgressIndicator`，改为 **3 个品牌青脉冲圆点**（呼吸动画：scale + opacity + 发光阴影）
+- 删除"AI 正在识别..."等多段状态文字，避免遮挡照片
+- 圆点尺寸 14×14，最小不透明度 0.5，带 BoxShadow 发光效果
+- 扫描线位置下调至 0.65 屏幕高，圆点位于 0.72 屏幕高
+
+### AI 图标更换
+- `screens/chat_screen.dart` AppBar — `Icons.smart_toy` → `Icons.auto_awesome`
+
+### ResultScreen 建议卡片真实 API（批次3）
+- 「官方旗舰店」— 调用 `ApiService().getSuggestions()` + 筛选 tags 含"自营"/"官方" → 跳转 CompareScreen（带品牌筛选）
+- 「相似推荐」— 调用 `ApiService().getSuggestions()` 传入 category → 跳转 CompareScreen
+- 修复 `use_build_context_synchronously`（6 处 info）
+
+### 新增页面（批次4）
+- `screens/search_screen.dart` — 搜索页：顶部搜索栏（自动聚焦）+ 热门标签 + 搜索结果列表（ProductCard）+ 空态/错误态/无结果态，点击结果跳转 CompareScreen
+- `screens/history_screen.dart` — 历史页：SharedPreferences 读取 `recent_records`，列表展示（图片+分类+品牌+时间），点击弹出 **Dialog 详情**（图片/分类/品牌/颜色/置信度/时间 + "查看比价"按钮），支持清空确认
+- `screens/profile_screen.dart` — 我的页：头像上传（相册选择）/修改、昵称编辑弹窗、识别次数统计、设置菜单（关于/清除缓存）
+
+### AI 气泡排版优化
+- `widgets/chat_bubble.dart` — 重写为 Row 布局：AI 消息左侧增加**品牌青渐变圆圈头像**（`auto_awesome` 图标 + 阴影），用户消息右侧增加默认灰色头像，气泡阴影加深（blurRadius 12）
+
+### 导航连接
+- `screens/home_screen.dart` — 搜索框跳转 SearchScreen、底部导航 1→HistoryScreen、3→ProfileScreen，保存记录时 `scan_count++`
+
+### 构建验证
+- `flutter analyze` — ✅ 0 issues
+- `flutter build apk --release` — ✅ 成功（21.5MB）
+
+### Git 提交记录
+```
+918e394 fix: 删除 ScanLineOverlay 已移除的 statusText 参数调用
+2a8699c fix: 扫描线圆点加大+加深+删除文字，优化视觉
+87d3ffe feat: Day 7 搜索页/历史页/我的页 + AI 气泡头像优化
+11121be feat: ResultScreen 建议卡片接入真实 API + 官方旗舰店/相似推荐
+448fb77 feat(day7): scan line pulse dots + AI icon auto_awesome
+a57e64c fix(day7): add category_groups mapping to fix category filter
+```
+
+---
+
+## Day 8 (5.29) 计划 — 功能补全 II
 
 ### 目标
-解决当前大量「功能开发中」占位问题，让 App 从「骨架」变成「有血有肉」。
+基于 Day 7 真机测试反馈继续优化，并完成剩余核心功能。
 
-### 任务清单
-
-**1. 底部导航「历史」页面**
-- 新建 `screens/history_screen.dart`
-- 展示最近识别记录（从 SharedPreferences 读取）
-- 每条记录显示：图片缩略图、商品名、识别时间、跳转结果页
-- 空状态："暂无识别记录，去拍一张吧"
-
-**2. 底部导航「我的」页面**
-- 新建 `screens/profile_screen.dart`
-- 用户信息卡片（头像、昵称、识别次数统计）
-- 设置列表：清除缓存、关于我们、隐私政策（占位）
-- 退出登录（占位）
-
-**3. 建议卡片 API 对接**
-- `result_screen.dart` 的「查看同款低价」已对接 CompareScreen
-- 「官方旗舰店」「相似推荐」从"功能开发中"改为真实逻辑或更友好的提示
-- 「价格走势」已对接 TrendScreen
-
-**4. 多目标识别真实逻辑（评估）**
-- 当前为模拟检测框，需评估是否能在今天完成真实 VLM 多目标检测
-- 如时间不足，优先保证「历史」「我的」页面完成
+### 待完成任务
+1. **价格走势图真实数据** — `screens/trend_screen.dart` 接入 `getTrend` API + 折线图库（fl_chart）
+2. **决策报告真实数据** — `screens/report_screen.dart` 接入 `generateReport` API
+3. **分享功能** — 商品比价结果分享卡片（截图/文本）
+4. **真机测试反馈修复** — 根据用户测试反馈逐项修复
+5. **Mock 数据继续扩充** — 覆盖更多边缘品类
 
 ### 设计原则
 - 保持现有 Design Token 风格一致
-- 复用已有组件（ProductCard、SuggestionCard 等）
-- 每个页面完成后编译检查 + 提交
+- 复用已有组件
+- 每个功能完成后编译检查 + 提交
 
 ---
 
