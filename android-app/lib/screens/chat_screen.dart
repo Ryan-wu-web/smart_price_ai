@@ -333,6 +333,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 MaterialPageRoute(
                   builder: (_) => ReportScreen(
                     productName: _currentProduct?.name ?? '当前商品',
+                    bestChoice: _currentProduct != null ? {
+                      'name': _currentProduct!.name,
+                      'platform': _currentProduct!.platform,
+                      'price': _currentProduct!.price,
+                    } : null,
                   ),
                 ),
               );

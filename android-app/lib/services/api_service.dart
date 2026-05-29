@@ -169,7 +169,11 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>?> generateReport(String productId) async {
+  Future<Map<String, dynamic>?> generateReport({
+    required String productName,
+    required Map<String, dynamic> bestChoice,
+    List<Map<String, dynamic>>? alternatives,
+  }) async {
     if (!await NetworkChecker.isOnline()) {
       throw ApiException(ErrorMessages.noInternet);
     }
@@ -177,7 +181,11 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/report'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'product_id': productId}),
+        body: jsonEncode({
+          'product_name': productName,
+          'best_choice': bestChoice,
+          'alternatives': alternatives ?? [],
+        }),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
