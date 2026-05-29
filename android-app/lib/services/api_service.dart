@@ -34,7 +34,7 @@ class ApiService {
         Uri.parse('$_baseUrl/api/v1/recognize'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'image_base64': base64Image}),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
