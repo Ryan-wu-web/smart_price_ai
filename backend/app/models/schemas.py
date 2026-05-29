@@ -71,6 +71,7 @@ class TrendResponse(BaseModel):
     trend: str = Field(..., description="趋势描述")
     advice: str = Field(..., description="购买建议")
     confidence: float = Field(..., ge=0, le=1, description="置信度")
+    history_prices: list[dict] = Field(default_factory=list, description="历史价格数据，每项含 date/price/platform")
 
 
 class ReportRequest(BaseModel):
