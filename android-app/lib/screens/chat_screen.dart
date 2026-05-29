@@ -99,6 +99,23 @@ class _ChatScreenState extends State<ChatScreen> {
             response['sessionId']?.toString();
         if (newSessionId != null) _sessionId = newSessionId;
 
+        // 从 LLM 回复中提取当前讨论的商品
+        final currentProductData = response['current_product'] as Map<String, dynamic>?;
+        if (currentProductData != null && currentProductData['name'] != null) {
+          _currentProduct = Product(
+            id: currentProductData['id']?.toString() ?? 'temp',
+            name: currentProductData['name']?.toString() ?? '未知商品',
+            brand: currentProductData['brand']?.toString() ?? '',
+            category: currentProductData['category']?.toString() ?? '',
+            price: (currentProductData['price'] as num?)?.toDouble() ?? 0.0,
+            platform: currentProductData['platform']?.toString() ?? '',
+            rating: (currentProductData['rating'] as num?)?.toDouble() ?? 0.0,
+            tags: (currentProductData['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+            originalPrice: (currentProductData['original_price'] as num?)?.toDouble() ?? 0.0,
+            imageUrl: currentProductData['image_url']?.toString() ?? '',
+          );
+        }
+
         setState(() {
           _messages.add(ChatMessage(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
