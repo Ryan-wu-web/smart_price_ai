@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 
@@ -103,9 +105,34 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   void _shareReport() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('分享功能即将上线')),
-    );
+    final text = _formatReportText();
+    try {
+      Share.share(text, subject: 'Smart Price AI 购物决策报告');
+    } catch (e) {
+      Clipboard.setData(ClipboardData(text: text));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('报告已复制到剪贴板')),
+        );
+      }
+    }
+  }
+
+  String _formatReportText() {
+    final sb = StringBuffer();
+    sb.writeln('🛍️ Smart Price AI 购物决策报告');
+    sb.writeln('商品：${widget.productName}');
+    sb.writeln('');
+    sb.writeln('🏆 最优选择');
+    sb.writeln(widget.reportData?['best_choice']?.toString()
+        ?? widget.bestChoice?['name']?.toString()
+        ?? '京东官方店');
+    sb.writeln('');
+    sb.writeln('💡 AI 建议');
+    sb.writeln(widget.reportData?['suggestion']?.toString()
+        ?? _apiReport?['recommendation']?.toString()
+        ?? '建议立即购买，当前价格为近期低点。');
+    return sb.toString();
   }
 
   Widget _buildReportHeader() {
