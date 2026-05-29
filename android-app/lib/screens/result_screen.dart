@@ -415,7 +415,7 @@ class _ResultScreenState extends State<ResultScreen>
                                 MaterialPageRoute(
                                   builder: (_) => TrendScreen(
                                     productName: _result.name ?? _result.category ?? '未知商品',
-                                    currentPrice: 799,
+                                    productId: '${_result.name ?? _result.category}_${_result.brand ?? ''}',
                                   ),
                                 ),
                               );
