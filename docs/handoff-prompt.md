@@ -317,22 +317,78 @@ a57e64c fix(day7): add category_groups mapping to fix category filter
 
 ---
 
-## Day 8 (5.29) 计划 — 功能补全 II
+## Day 8 (5.29) 更新 — 功能补全 II
+
+### 后端趋势数据增强
+- `backend/app/models/schemas.py` — `TrendResponse` 增加 `history_prices` 字段（list[dict]，每项含 date/price/platform）
+- `backend/app/services/trend.py` — 新增 `_generate_mock_history()` 方法，基于 product_id hash 生成稳定的 90 天 Mock 历史价格（每天 ±5% 波动，4 平台轮换）
+- `backend/app/routers/trend.py` — 基于 product_id 生成基准价格（500-1500），返回含历史价格的 TrendResponse
+
+### 前端价格走势图
+- `pubspec.yaml` — 新增 `fl_chart: ^0.68.0` 依赖
+- `screens/trend_screen.dart` — 从 StatelessWidget 重写为 StatefulWidget，接入 `getTrend()` API，使用 `fl_chart` 绘制折线图：品牌青色曲线 + 圆点标记 + 渐变填充区域，左侧价格刻度，底部日期标签，AI 分析卡片显示趋势标签（上涨/下跌/平稳，带颜色）+ 置信度，三个统计卡片：90天均价 / 历史最低 / 价格趋势
+- `screens/result_screen.dart` — TrendScreen 调用传入 `productId`
+
+### 决策报告混合模式
+- `screens/report_screen.dart` — 从 StatelessWidget 重写为 StatefulWidget：路径 A（传入 reportData 直显）/ 路径 B（传入 bestChoice 调 API）
+- `services/api_service.dart` — `generateReport()` 签名更新为接收 `productName`/`bestChoice`/`alternatives`
+- `screens/chat_screen.dart` — 底部「报告」按钮传入当前商品信息
+
+### 分享功能
+- `pubspec.yaml` — 新增 `share_plus: ^9.0.0` 依赖
+- `screens/report_screen.dart` — `Share.share()` 系统分享面板 + `Clipboard` fallback
+
+### API 超时优化
+- `services/api_service.dart` — `recognize()` 超时从 60s 延长到 **120s**
+
+### LLM Prompt 优化
+- `backend/app/core/prompt_engine.py` — `chat_reply` Prompt 增强：新增 `current_product` 字段，明确 `action=report` 触发条件
+- `screens/chat_screen.dart` — 解析 LLM 回复中的 `current_product`，更新 `_currentProduct`
+
+### 真机测试反馈（Day 8 当日）
+- ✅ 价格走势图 — 全部通过（折线图、90天数据、AI分析、统计卡片）
+- ✅ 分享功能 — 系统分享面板正常，可分享到微信
+- ⚠️ 决策卡片 — 偶尔不出现（Prompt 调优问题，需继续迭代）
+- ⚠️ 官方旗舰店/相似推荐 — 用户反馈"有大问题"，待详细排查
+- ⚠️ 搜索页 — 用户反馈"不够美观"，待优化
+
+### 构建验证
+- `flutter analyze` — ✅ 0 issues
+- `flutter build apk --release` — ✅ 成功（21.7MB）
+- `pytest backend/tests/` — ✅ 25/25 PASS
+
+### Git 提交记录
+```
+c0a33bd fix: LLM returns current_product + report action; frontend parses it
+ff0922d fix: extend API timeout from 60s to 120s for VLM slow response
+9400049 feat(day8): trend chart + report mixed mode + share
+2c4f1c1 feat: share report via share_plus with clipboard fallback
+d61e47f feat: ReportScreen mixed mode - actionData display + API fallback
+b900568 feat: TrendScreen with fl_chart line chart + real API data
+8a60f4c chore: add fl_chart and share_plus dependencies
+4236ae9 feat(backend): TrendService generate 90-day mock price history
+4927f98 feat(backend): TrendResponse add history_prices field
+0a07776 docs: Day 8 implementation plan
+```
+
+---
+
+## Day 9-10 (5.30-5.31) 计划 — 功能完善 + AI Pipeline 调优
+
+### 待修复问题（来自 Day 8 真机反馈）
+1. **官方旗舰店/相似推荐跳转问题** — CompareScreen 数据展示异常，需详细排查
+2. **搜索页美化** — UI 优化，提升视觉质感
+3. **决策卡片稳定性** — 优化 Prompt，确保 LLM 稳定返回 report action
+4. **分享文本商品名** — 确保 ReportScreen 正确显示当前商品名
+
+### AI Pipeline 调优
+1. **VLM 识物 Prompt 调优** — 准确率提升、边界 case 处理
+2. **AI 导购对话优化** — 上下文记忆、多轮对话自然度
+3. **Mock 数据完善** — 更多品类、更真实的价格数据
 
 ### 目标
-基于 Day 7 真机测试反馈继续优化，并完成剩余核心功能。
-
-### 待完成任务
-1. **价格走势图真实数据** — `screens/trend_screen.dart` 接入 `getTrend` API + 折线图库（fl_chart）
-2. **决策报告真实数据** — `screens/report_screen.dart` 接入 `generateReport` API
-3. **分享功能** — 商品比价结果分享卡片（截图/文本）
-4. **真机测试反馈修复** — 根据用户测试反馈逐项修复
-5. **Mock 数据继续扩充** — 覆盖更多边缘品类
-
-### 设计原则
-- 保持现有 Design Token 风格一致
-- 复用已有组件
-- 每个功能完成后编译检查 + 提交
+- 所有核心链路（拍照→识别→比价→趋势→报告→分享）全链路稳定可用
+- 真机测试无明显阻塞问题
 
 ---
 

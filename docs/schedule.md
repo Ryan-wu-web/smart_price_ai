@@ -87,22 +87,30 @@
 |------|------|---------|
 | **Day 6 (5.27)** | **响应式适配 + 打磨收尾** | 不同屏幕尺寸适配、手势导航栏适配、无障碍支持、边缘 case 处理（无网络/无权限/后端不可用） | ✅ 完成 |
 | **Day 7 (5.28)** | **功能补全 I** | 搜索页、历史页（弹窗详情）、我的页（头像昵称）、建议卡片真实 API、扫描线美化、AI 气泡头像 | ✅ 完成
-| **Day 8 (5.29)** | **功能补全 II** | 价格走势图真实数据（fl_chart）、决策报告真实数据、分享功能、真机反馈修复 |
+| **Day 8 (5.29)** | **功能补全 II** | 价格走势图真实数据（fl_chart）、决策报告混合模式、分享功能、API 超时优化、LLM Prompt 调优 | ✅ 完成
 
 **Day 7 已完成功能**：
-1. ✅ 搜索页 — `screens/search_screen.dart`（搜索栏+热门标签+结果列表）
-2. ✅ 历史页 — `screens/history_screen.dart`（列表+弹窗详情+清空）
-3. ✅ 我的页 — `screens/profile_screen.dart`（头像/昵称/识别次数/设置）
-4. ✅ 建议卡片真实 API — 官方旗舰店、相似推荐接入 `getSuggestions()`
-5. ✅ 扫描线美化 — 脉冲圆点替代进度条+文字
+1. ✅ 搜索页 — `screens/search_screen.dart`
+2. ✅ 历史页 — `screens/history_screen.dart`
+3. ✅ 我的页 — `screens/profile_screen.dart`
+4. ✅ 建议卡片真实 API — 官方旗舰店、相似推荐
+5. ✅ 扫描线美化 — 脉冲圆点
 6. ✅ AI 气泡优化 — 头像圆圈+阴影
 
-**Day 8 待补全功能**：
-1. 价格走势 — 仅骨架页，需接入真实 `getTrend` API + 折线图（fl_chart）
-2. 决策报告 — 仅骨架页，需接入真实 `generateReport` API
-3. 分享功能 — 尚未实现
-4. 多目标识别 — 目前为模拟检测框，需评估是否接入真实 VLM 多目标检测
-5. 真机测试反馈修复 — 根据用户反馈逐项优化
+**Day 8 已完成功能**：
+1. ✅ 价格走势图 — `fl_chart` 折线图 + `getTrend` API + 90 天 Mock 历史数据
+2. ✅ 决策报告 — 混合模式（actionData 直显 + API fallback）
+3. ✅ 分享功能 — `share_plus` 系统分享 + Clipboard fallback
+4. ✅ API 超时优化 — 60s → 120s
+5. ✅ LLM Prompt 优化 — `current_product` + `action=report`
+
+**Day 9-10 待完成**：
+1. 官方旗舰店/相似推荐问题修复 — CompareScreen 数据展示异常
+2. 搜索页美化 — UI 优化
+3. 决策卡片稳定性 — Prompt 持续调优
+4. VLM 识物 Prompt 调优 — 准确率提升
+5. AI 导购对话优化 — 上下文记忆、多轮对话
+6. Mock 数据完善 — 更多品类
 
 ---
 
@@ -174,4 +182,4 @@
 
 ---
 
-*最后更新：2025-05-28*
+*最后更新：2025-05-29*
