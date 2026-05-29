@@ -14,12 +14,9 @@ router = APIRouter(prefix="/api/v1", tags=["trend"])
 async def trend(product_id: str):
     try:
         service = TrendService()
-        # Mock history data based on product_id
-        history = [
-            {"date": "2024-01-01", "price": 1000.0, "platform": "淘宝"},
-            {"date": "2024-02-01", "price": 950.0, "platform": "京东"},
-            {"date": "2024-03-01", "price": 900.0, "platform": "天猫"},
-        ]
+        # 使用 product_id 的 hash 生成稳定基准价格（500-1500）
+        base_price = 500 + (hash(product_id) % 1000)
+        history = service._generate_mock_history(product_id, float(base_price))
         return service.analyze_trend_sync(product_id, history)
     except HTTPException:
         raise

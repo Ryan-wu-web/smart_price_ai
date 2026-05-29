@@ -1,7 +1,37 @@
+import random
+from datetime import datetime, timedelta
+
 from app.models.schemas import TrendResponse
 
 
 class TrendService:
+    def _generate_mock_history(self, product_name: str, base_price: float) -> list[dict]:
+        """基于基准价格生成 90 天 Mock 历史价格数据"""
+        history = []
+        price = float(base_price)
+        end_date = datetime.now()
+        platforms = ["京东", "淘宝", "天猫", "拼多多"]
+
+        # 使用 product_name 的 hash 作为随机种子，保证同一商品每次生成的数据一致
+        seed = hash(product_name) % 10000
+        rng = random.Random(seed)
+
+        for i in range(90, 0, -1):
+            date = end_date - timedelta(days=i)
+            # 每天价格波动 ±5%
+            change = rng.uniform(-0.05, 0.05)
+            price = max(base_price * 0.7, min(base_price * 1.3, price * (1 + change)))
+
+            # 每 3 天换一个平台
+            platform = platforms[(90 - i) // 3 % len(platforms)]
+
+            history.append({
+                "date": date.strftime("%m-%d"),
+                "price": round(price, 2),
+                "platform": platform,
+            })
+        return history
+
     def analyze_trend_sync(
         self, product_name: str, history_prices: list[dict]
     ) -> TrendResponse:
@@ -32,4 +62,9 @@ class TrendService:
             advice = "价格波动不大，可根据需求随时购买"
             confidence = 0.7
 
-        return TrendResponse(trend=trend, advice=advice, confidence=round(confidence, 2))
+        return TrendResponse(
+            trend=trend,
+            advice=advice,
+            confidence=round(confidence, 2),
+            history_prices=sorted_prices,
+        )
