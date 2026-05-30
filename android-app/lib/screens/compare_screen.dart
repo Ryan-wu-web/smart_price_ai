@@ -10,12 +10,14 @@ class CompareScreen extends StatefulWidget {
   final String category;
   final String? brand;
   final String? color;
+  final String? filterMode;
 
   const CompareScreen({
     super.key,
     required this.category,
     this.brand,
     this.color,
+    this.filterMode,
   });
 
   @override
@@ -28,11 +30,25 @@ class _CompareScreenState extends State<CompareScreen> {
   int _selectedFilter = 0;
   List<Product> _products = [];
   bool _isLoading = true;
+  String? _filterMode;
+  String _filterTitle = '';
 
   @override
   void initState() {
     super.initState();
+    _filterMode = widget.filterMode;
+    _updateFilterTitle();
     _loadProducts();
+  }
+
+  void _updateFilterTitle() {
+    if (_filterMode == 'official') {
+      _filterTitle = '🏪 官方旗舰店';
+    } else if (_filterMode == 'similar') {
+      _filterTitle = '✨ 相似推荐';
+    } else {
+      _filterTitle = '';
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -43,6 +59,7 @@ class _CompareScreenState extends State<CompareScreen> {
         brand: widget.brand,
         color: widget.color,
         sortBy: _sortByValues[_selectedFilter],
+        filterMode: _filterMode,
       );
       if (!mounted) return;
       setState(() {
@@ -95,6 +112,54 @@ class _CompareScreenState extends State<CompareScreen> {
       ),
       body: Column(
         children: [
+          if (_filterTitle.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: Constants.brandGradient,
+                borderRadius: BorderRadius.circular(Constants.radiusLarge),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _filterTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _filterMode = null;
+                        _filterTitle = '';
+                      });
+                      _loadProducts();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '查看全部',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           LayoutBuilder(
             builder: (context, constraints) {
               final tags = List.generate(_filters.length, (index) {

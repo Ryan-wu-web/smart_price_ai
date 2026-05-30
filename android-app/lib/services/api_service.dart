@@ -90,6 +90,7 @@ class ApiService {
     String? brand,
     String? color,
     String? sortBy,
+    String? filterMode,
   }) async {
     if (!await NetworkChecker.isOnline()) {
       throw ApiException(ErrorMessages.noInternet);
@@ -98,6 +99,7 @@ class ApiService {
     if (brand != null) queryParams['brand'] = brand;
     if (color != null) queryParams['color'] = color;
     if (sortBy != null) queryParams['sort_by'] = sortBy;
+    if (filterMode != null) queryParams['filter_mode'] = filterMode;
 
     final uri = Uri.parse('$_baseUrl/api/v1/compare')
         .replace(queryParameters: queryParams);
