@@ -446,11 +446,57 @@ b900568 feat: TrendScreen with fl_chart line chart + real API data
 
 ### Git 提交记录
 ```
+53f8dd5 feat(day9-fix): smart report cards with 3 types + chat timeout 60s retry
 a7a7b6c feat(day9-batch4): ChatScreen report fallback + ChatService persistence + auto-summarize
 f985e66 feat(day9-batch3): SearchScreen visual overhaul with animations + search history
 1ed03d5 feat(day9-batch2): ResultScreen direct nav + CompareScreen filterMode banner
 8796830 feat(day9-batch1): mock data expansion + filter_mode support + prompt rewrite with few-shot
 ```
+
+---
+
+## Day 9 晚间更新 — 决策卡片智能分类修复
+
+### 问题反馈
+用户真机测试发现：决策卡片只有一个固定模板（目标商品/最优选择/AI建议/预计节省），无法匹配不同用户意图：
+- 问"对比一下A和B" → 给的是"决策报告"（不匹配）
+- 问"购买建议" → 给的也是"决策报告"（不匹配）
+
+### 修复内容
+- `backend/app/core/prompt_engine.py` — `chat_reply` Prompt 增加 `report_type` 字段：
+  - `comparison` → 用户明确对比两个商品
+  - `buy_guide` → 用户问购买时机/平台/配色
+  - `decision` → 用户问哪个更好/帮我选
+- `android-app/lib/screens/chat_screen.dart` — 重写决策卡片体系：
+  - `_buildComparisonCard()` — 橙色「对比分析」卡片：对比对象/核心差异/各自优势/适合人群
+  - `_buildBuyGuideCard()` — 绿色「购买指南」卡片：最佳时机/推荐平台/热门配色/预估价格
+  - `_buildDecisionReportCard()` — 品牌青「AI决策报告」卡片：保持原有格式
+- `android-app/lib/services/api_service.dart` — `sendChat()` 超时 30s → 60s，增加1次自动重试
+
+### 真机验证
+- ✅ "对比一下AF1和Dunk" → 橙色「对比分析」卡片
+- ✅ "AF1什么时候买最划算" → 绿色「购买指南」卡片
+- ✅ "帮我选一双鞋" → 品牌青「AI决策报告」卡片
+
+---
+
+## Day 10 (5.31) 计划 — 全面完善
+
+### 流程
+测试开发 → 发现问题 → 找到根因 → 制定策略 → 执行修复 → 重新测试
+
+### 待验证/完善项
+1. **全链路回归测试** — 拍照→识别→比价→趋势→报告→分享→AI导购
+2. **决策卡片边界 case** — 混合意图（"对比+购买建议"）时的 report_type 判断
+3. **搜索页细节** — 搜索结果为空时的体验、长搜索历史溢出处理
+4. **CompareScreen 筛选** — 官方/相似筛选后排序是否正常
+5. **Chat 多轮对话** — 超过6轮后的摘要质量
+6. **VLM 识别** — 不同光线/角度下的识别准确率
+7. **ReportScreen 分享** — 分享文本是否正确包含商品名
+
+### 目标
+- 所有核心链路无明显阻塞问题
+- 真机测试用户体验流畅
 
 ---
 
