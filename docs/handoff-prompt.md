@@ -392,4 +392,66 @@ b900568 feat: TrendScreen with fl_chart line chart + real API data
 
 ---
 
+---
+
+## Day 9 (5.30) 更新 — 功能修复 + AI Pipeline 调优
+
+### 官方旗舰店 / 相似推荐修复
+- `result_screen.dart` — 去掉多余的 `ApiService().getSuggestions()` LLM 调用（原20秒延迟），直接跳转 CompareScreen
+- `compare_screen.dart` — 新增 `filterMode` 参数（official/similar），顶部品牌渐变标识栏 + "查看全部" Toggle
+- `api_service.dart` — `compare()` 方法增加 `filterMode` 参数
+- `backend/app/services/comparison.py` — `search()` 支持 `filter_mode` 过滤（官方 tag 过滤 / 相似去重）
+- `backend/app/routers/compare.py` + `schemas.py` — 接收并校验 `filter_mode` query 参数
+
+### 搜索页美化
+- `search_screen.dart` — 全面重构：
+  - 搜索框 placeholder 颜色加深 + 字号提升至 15px
+  - 搜索框聚焦时品牌色渐变发光边框动画
+  - 搜索中状态：右侧品牌青脉冲圆点
+  - 新增「最近搜索」历史记录（SharedPreferences），支持单条删除 / 清空全部
+  - 热门标签字号提升至 14px，带 stagger 淡入动画
+  - 搜索提示卡片带延迟上浮动画
+
+### 决策卡片稳定性
+- `backend/app/core/prompt_engine.py` — `chat_reply` Prompt 重写：
+  - 增加 2 组 Few-shot 示例
+  - action 触发规则结构化（关键词匹配）
+  - 增加 `current_product` 回填规则
+- `chat_screen.dart` — 前端兜底：LLM 返回 `none` 但用户消息含触发词时，强制改为 `report`
+
+### VLM Prompt 调优
+- `backend/app/core/vlm_client.py` — VLM 描述 Prompt 重写：
+  - 要求按固定格式输出（品牌/品类/颜色/材质/款式）
+  - 增加 2 组 Few-shot 示例
+  - 明确"未知"标注约束
+- `backend/app/core/prompt_engine.py` — `recognize` Prompt 增加 Few-shot + 字段约束
+- `backend/app/services/recognition.py` — 增加重试容错（temperature 0.3 → 0.1）
+
+### AI 导购对话优化
+- `backend/app/services/chat.py` — 全面重写：
+  - 增加对话摘要机制：超过 6 轮自动摘要历史，保留最近 2 轮完整对话
+  - 增加会话持久化：每轮自动写入 `data/sessions/{session_id}.json`
+- `backend/app/core/prompt_engine.py` — `chat_reply` 增加角色设定（"小价"，亲切自然）
+
+### Mock 数据扩充
+- `backend/app/services/comparison.py` — 从 122 条 → 162 条基础数据（+40条）
+- 新增品类：食品（5款）、图书（5款）、母婴（5款）、宠物（5款）
+- 现有品类加深：运动鞋/数码/美妆/家居（+20款）
+- 总计 390 条商品数据（162 × 3 平台 - 去重）
+
+### 构建验证
+- `flutter analyze` — ✅ 0 issues
+- `flutter build apk --release` — ✅ 成功（21.7MB）
+- `pytest backend/tests/` — ✅ 25/25 PASS
+
+### Git 提交记录
+```
+a7a7b6c feat(day9-batch4): ChatScreen report fallback + ChatService persistence + auto-summarize
+f985e66 feat(day9-batch3): SearchScreen visual overhaul with animations + search history
+1ed03d5 feat(day9-batch2): ResultScreen direct nav + CompareScreen filterMode banner
+8796830 feat(day9-batch1): mock data expansion + filter_mode support + prompt rewrite with few-shot
+```
+
+---
+
 **请基于以上上下文继续推进项目。**
