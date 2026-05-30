@@ -17,7 +17,16 @@ class RecognitionService:
         description = await self.vlm_client.describe_image(image_base64)
         prompt = PromptEngine.recognize(description)
         messages = [{"role": "user", "content": prompt}]
-        result = await self.llm_client.chat_json(messages)
+        
+        result = {}
+        for attempt, temp in enumerate([0.3, 0.1], 1):
+            try:
+                result = await self.llm_client.chat_json(messages, temperature=temp)
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+        
         return RecognizeResponse(
             name=result.get("name", ""),
             brand=result.get("brand", ""),

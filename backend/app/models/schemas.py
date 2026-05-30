@@ -53,6 +53,7 @@ class CompareQuery(BaseModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     sort_by: Optional[str] = Field(default=None, pattern="^(price|rating)$")
+    filter_mode: Optional[str] = Field(default=None, pattern="^(official|similar)$")
 
 
 class CompareResponse(BaseModel):

@@ -8,7 +8,8 @@ from app.models.schemas import CompareQuery, ProductResponse
 class DataSource(ABC):
     @abstractmethod
     def search(
-        self, category: str, brand: str | None = None, color: str | None = None
+        self, category: str, brand: str | None = None, color: str | None = None,
+        filter_mode: str | None = None
     ) -> list[ProductResponse]:
         raise NotImplementedError
 
@@ -120,6 +121,41 @@ class MockDataSource(DataSource):
             {"name": "宜家 法格里克 杯子 蓝色", "brand": "宜家", "category": "杯子", "color": "蓝色", "price": 9.9},
             {"name": "网易严选 四件套 1.5m 灰色", "brand": "网易严选", "category": "床上用品", "color": "灰色", "price": 299.0},
             {"name": "MUJI 天竺棉被套 双人 米色", "brand": "MUJI", "category": "床上用品", "color": "米色", "price": 399.0},
+            # 食品
+            {"name": "三只松鼠 每日坚果 750g", "brand": "三只松鼠", "category": "零食", "color": "混合", "price": 89.0},
+            {"name": "元气森林 气泡水 480ml×15", "brand": "元气森林", "category": "饮料", "color": "透明", "price": 59.9},
+            {"name": "Swisse 维C泡腾片 20片", "brand": "Swisse", "category": "保健品", "color": "橙色", "price": 78.0},
+            {"name": "良品铺子 猪肉脯 200g", "brand": "良品铺子", "category": "零食", "color": "棕色", "price": 29.9},
+            {"name": "奥利奥 经典原味 696g", "brand": "奥利奥", "category": "零食", "color": "黑色", "price": 35.9},
+            # 图书
+            {"name": "《三体》全集（3册）", "brand": "刘慈欣", "category": "图书", "color": "黑色", "price": 68.0},
+            {"name": "《深入理解计算机系统》", "brand": "Randal", "category": "图书", "color": "蓝色", "price": 139.0},
+            {"name": "《小王子》", "brand": "圣埃克苏佩里", "category": "图书", "color": "黄色", "price": 25.0},
+            {"name": "《活着》", "brand": "余华", "category": "图书", "color": "红色", "price": 28.0},
+            {"name": "《人类简史》", "brand": "尤瓦尔", "category": "图书", "color": "米色", "price": 45.0},
+            # 母婴
+            {"name": "爱他美 卓傲3段 800g", "brand": "爱他美", "category": "奶粉", "color": "白色", "price": 298.0},
+            {"name": "花王 纸尿裤 M64片", "brand": "花王", "category": "纸尿裤", "color": "白色", "price": 89.0},
+            {"name": "贝亲 玻璃奶瓶 160ml", "brand": "贝亲", "category": "奶瓶", "color": "透明", "price": 79.0},
+            {"name": "好孩子 婴儿推车", "brand": "好孩子", "category": "婴儿车", "color": "灰色", "price": 599.0},
+            {"name": "Babycare 湿巾 80抽×10", "brand": "Babycare", "category": "湿巾", "color": "白色", "price": 49.9},
+            # 宠物
+            {"name": "皇家 室内成猫粮 2kg", "brand": "皇家", "category": "猫粮", "color": "棕色", "price": 128.0},
+            {"name": "渴望 六种鱼狗粮 2kg", "brand": "渴望", "category": "狗粮", "color": "棕色", "price": 268.0},
+            {"name": "pidan 混合猫砂 3.6kg", "brand": "pidan", "category": "猫砂", "color": "白色", "price": 29.9},
+            {"name": "小佩 智能饮水机", "brand": "小佩", "category": "宠物用品", "color": "白色", "price": 199.0},
+            {"name": "麦富迪 鸡肉干 400g", "brand": "麦富迪", "category": "宠物零食", "color": "棕色", "price": 35.0},
+            # 现有品类加深
+            {"name": "Adidas Samba OG 白色 42码", "brand": "Adidas", "category": "运动鞋", "color": "白色", "price": 899.0},
+            {"name": "Nike Air Max 95 黑色 42码", "brand": "Nike", "category": "运动鞋", "color": "黑色", "price": 1099.0},
+            {"name": "New Balance 550 白色 42码", "brand": "New Balance", "category": "运动鞋", "color": "白色", "price": 799.0},
+            {"name": "MacBook Air M3 13寸 午夜色", "brand": "Apple", "category": "电脑", "color": "午夜色", "price": 8999.0},
+            {"name": "iPad mini 6 64GB 紫色", "brand": "Apple", "category": "平板", "color": "紫色", "price": 3999.0},
+            {"name": "华为 FreeBuds Pro 3 白色", "brand": "华为", "category": "耳机", "color": "白色", "price": 1299.0},
+            {"name": "小米手环9 黑色", "brand": "小米", "category": "智能穿戴", "color": "黑色", "price": 249.0},
+            {"name": "雅诗兰黛 小棕瓶精华 50ml", "brand": "雅诗兰黛", "category": "精华", "color": "棕色", "price": 935.0},
+            {"name": "兰蔻 大粉水 400ml", "brand": "兰蔻", "category": "护肤水", "color": "粉色", "price": 420.0},
+            {"name": "SK-II 神仙水 230ml", "brand": "SK-II", "category": "精华", "color": "透明", "price": 1540.0},
         ]
 
         platforms = {
@@ -171,7 +207,8 @@ class MockDataSource(DataSource):
             )
 
     def search(
-        self, category: str, brand: str | None = None, color: str | None = None
+        self, category: str, brand: str | None = None, color: str | None = None,
+        filter_mode: str | None = None
     ) -> list[ProductResponse]:
         import logging
         logger = logging.getLogger(__name__)
@@ -211,6 +248,22 @@ class MockDataSource(DataSource):
                 results = color_results
             logger.info(f"[MockDataSource] after color filter: {len(results)} items")
         
+        # filter_mode 过滤
+        if filter_mode == "official":
+            official_tags = {"自营", "官方", "官方旗舰店"}
+            results = [p for p in results if any(tag in official_tags for tag in p.tags)]
+            logger.info(f"[MockDataSource] official filter: {len(results)} items")
+        elif filter_mode == "similar":
+            similar_results = []
+            seen_names = set()
+            for p in results:
+                name_key = p.name.split()[0] if p.name else ""
+                if name_key not in seen_names:
+                    seen_names.add(name_key)
+                    similar_results.append(p)
+            results = similar_results
+            logger.info(f"[MockDataSource] similar filter: {len(results)} items")
+        
         return results
 
 
@@ -220,7 +273,7 @@ class ComparisonService:
 
     def compare(self, query: CompareQuery) -> list[ProductResponse]:
         results = self.data_source.search(
-            query.category, query.brand, query.color
+            query.category, query.brand, query.color, query.filter_mode
         )
         if query.sort_by == "price":
             results = sort_by_price(results)

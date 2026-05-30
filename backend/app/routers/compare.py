@@ -16,10 +16,11 @@ async def compare(
     brand: str | None = None,
     color: str | None = None,
     sort_by: str | None = None,
+    filter_mode: str | None = None,
 ):
-    logger.info(f"[compare API] params: category={category}, brand={brand}, color={color}, sort_by={sort_by}")
+    logger.info(f"[compare API] params: category={category}, brand={brand}, color={color}, sort_by={sort_by}, filter_mode={filter_mode}")
     try:
-        query = CompareQuery(category=category, brand=brand, color=color, sort_by=sort_by)
+        query = CompareQuery(category=category, brand=brand, color=color, sort_by=sort_by, filter_mode=filter_mode)
         service = ComparisonService()
         products = service.compare(query)
         logger.info(f"[compare API] returning {len(products)} products")
