@@ -99,6 +99,12 @@ class _ChatScreenState extends State<ChatScreen> {
             response['sessionId']?.toString();
         if (newSessionId != null) _sessionId = newSessionId;
 
+        // action 兜底：如果 LLM 返回 none 但用户消息包含触发词，强制改为 report
+        String action = response['action']?.toString() ?? 'none';
+        if (action == 'none' && _containsReportKeywords(text)) {
+          action = 'report';
+        }
+
         // 从 LLM 回复中提取当前讨论的商品
         final currentProductData = response['current_product'] as Map<String, dynamic>?;
         if (currentProductData != null && currentProductData['name'] != null) {
@@ -122,7 +128,7 @@ class _ChatScreenState extends State<ChatScreen> {
             text: reply,
             isUser: false,
             timestamp: DateTime.now(),
-            action: response['action']?.toString(),
+            action: action,
             actionData: response['action_data'] as Map<String, dynamic>? ??
                 response['actionData'] as Map<String, dynamic>?,
           ));
@@ -141,6 +147,11 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     }
+  }
+
+  bool _containsReportKeywords(String message) {
+    final keywords = ['对比', '比较', '哪个好', '哪个更好', '推荐', '帮我选', '决策', '报告'];
+    return keywords.any((k) => message.contains(k));
   }
 
   void _scrollToBottom() {
