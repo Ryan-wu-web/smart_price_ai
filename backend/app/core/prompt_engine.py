@@ -103,16 +103,28 @@ class PromptEngine:
             "action_data（动作所需数据，字典类型）、"
             "current_product（当前讨论的商品信息，包含 name/brand/category/price/platform 字段，如果对话中提到具体商品则填写）。\n\n"
             "action 触发规则（严格按以下规则判断）：\n"
-            "- 如果用户消息包含以下任一关键词：'对比'、'比较'、'哪个好'、'哪个更好'、'推荐'、'帮我选'、'决策'、'报告' → action 设为 'report'\n"
+            "- 如果用户消息包含以下任一关键词：'对比'、'比较'、'和...相比'、'versus'、'vs' → action 设为 'report'，同时判断 report_type\n"
+            "- 如果用户消息包含以下任一关键词：'购买建议'、'什么时候买'、'在哪买'、'怎么买'、'入手时机' → action 设为 'report'，同时判断 report_type\n"
+            "- 如果用户消息包含以下任一关键词：'哪个好'、'哪个更好'、'推荐'、'帮我选'、'决策' → action 设为 'report'，同时判断 report_type\n"
             "- 如果用户消息包含以下任一关键词：'走势'、'历史价格'、'涨跌'、'趋势'、'价格变化' → action 设为 'trend'\n"
             "- 其他情况 action 设为 'none'\n\n"
-            "report 类型的 action_data 格式："
-            '{"target_product": "商品名", "best_choice": "最优选择描述", "suggestion": "AI建议", "savings": 100}\n\n'
+            "report_type 判断规则（action='report' 时必须填写）：\n"
+            "- 如果用户明确提到两个及以上商品进行对比：report_type = 'comparison'\n"
+            "- 如果用户问购买时机、平台选择、颜色推荐：report_type = 'buy_guide'\n"
+            "- 如果用户问哪个更好、帮我选一个：report_type = 'decision'\n\n"
+            "comparison 类型的 action_data 格式："
+            '{"report_type": "comparison", "product_a": "商品A名称", "product_b": "商品B名称", "differences": "核心差异总结", "advantages_a": "商品A优势", "advantages_b": "商品B优势", "suitable_for_a": "适合人群A", "suitable_for_b": "适合人群B"}\n\n'
+            "buy_guide 类型的 action_data 格式："
+            '{"report_type": "buy_guide", "target_product": "商品名", "best_time": "最佳购买时机", "best_platform": "推荐购买平台", "popular_colors": "热门配色推荐", "price_estimate": "预估价格区间"}\n\n'
+            "decision 类型的 action_data 格式："
+            '{"report_type": "decision", "target_product": "商品名", "best_choice": "最优选择描述", "suggestion": "AI建议", "savings": 100}\n\n'
             "current_product 规则：如果用户提到了具体商品名，必须把该商品信息填入 current_product。"
             "如果你推荐的商品与当前关注商品不同，请在 reply 中说明推荐理由。\n\n"
-            "示例1（用户问哪个好）：\n"
-            '{"reply": "根据对比，XX 在性价比上更胜一筹 😊", "action": "report", "action_data": {"target_product": "XX", "best_choice": "XX官方店", "suggestion": "建议选择XX", "savings": 50}, "current_product": {"name": "XX", "brand": "XX", "category": "运动鞋", "price": 799, "platform": "京东"}}\n\n'
-            "示例2（普通聊天）：\n"
+            "示例1（用户对比两款鞋）：\n"
+            '{"reply": "AF1和Dunk各有特色 😊 AF1更经典百搭，Dunk更潮流个性", "action": "report", "action_data": {"report_type": "comparison", "product_a": "Nike Air Force 1", "product_b": "Nike Dunk", "differences": "AF1偏经典休闲，Dunk偏潮流街头", "advantages_a": "皮质更好、更耐穿、百搭", "advantages_b": "配色更多、更轻便、潮流感强", "suitable_for_a": "日常通勤、追求经典的用户", "suitable_for_b": "潮流穿搭、追求个性的用户"}, "current_product": {"name": "Nike Air Force 1", "brand": "Nike", "category": "运动鞋", "price": 799, "platform": "京东"}}\n\n'
+            "示例2（用户问购买建议）：\n"
+            '{"reply": "关于AF1的购买建议 👟 大促期间入手最划算", "action": "report", "action_data": {"report_type": "buy_guide", "target_product": "Nike Air Force 1", "best_time": "618/双11大促期间", "best_platform": "京东自营或天猫官旗", "popular_colors": "纯白、黑白熊猫", "price_estimate": "¥600-800"}, "current_product": {"name": "Nike Air Force 1", "brand": "Nike", "category": "运动鞋", "price": 799, "platform": "京东"}}\n\n'
+            "示例3（普通聊天）：\n"
             '{"reply": "没问题，有什么想了解的随时问我！", "action": "none", "action_data": {}, "current_product": {}}\n\n'
             "只输出 JSON，不要添加任何解释文字。"
         )

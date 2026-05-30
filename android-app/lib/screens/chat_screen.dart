@@ -167,93 +167,175 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildDecisionCard(Map<String, dynamic> data) {
+    final reportType = data['report_type']?.toString() ?? 'decision';
+    switch (reportType) {
+      case 'comparison':
+        return _buildComparisonCard(data);
+      case 'buy_guide':
+        return _buildBuyGuideCard(data);
+      case 'decision':
+      default:
+        return _buildDecisionReportCard(data);
+    }
+  }
+
+  Widget _buildDecisionReportCard(Map<String, dynamic> data) {
+    return _buildCardWrapper(
+      icon: Icons.assignment_turned_in,
+      title: 'AI 决策报告',
+      children: [
+        if (data['target_product'] != null)
+          _buildReportRow('目标商品', data['target_product'].toString()),
+        if (data['best_choice'] != null)
+          _buildReportRow('最优选择', data['best_choice'].toString()),
+        if (data['suggestion'] != null)
+          _buildReportRow('AI 建议', data['suggestion'].toString()),
+        if (data['savings'] != null)
+          _buildReportRow('预计节省', '¥${data['savings']}'),
+      ],
+      buttonText: '分享报告',
+      onButtonTap: () => _navigateToReport(data),
+    );
+  }
+
+  Widget _buildComparisonCard(Map<String, dynamic> data) {
+    return _buildCardWrapper(
+      icon: Icons.compare_arrows,
+      title: '对比分析',
+      accentColor: Colors.orange,
+      children: [
+        if (data['product_a'] != null && data['product_b'] != null)
+          _buildReportRow('对比对象', '${data['product_a']} vs ${data['product_b']}'),
+        if (data['differences'] != null)
+          _buildReportRow('核心差异', data['differences'].toString()),
+        if (data['advantages_a'] != null)
+          _buildReportRow('${data['product_a']} 优势', data['advantages_a'].toString()),
+        if (data['advantages_b'] != null)
+          _buildReportRow('${data['product_b']} 优势', data['advantages_b'].toString()),
+        if (data['suitable_for_a'] != null)
+          _buildReportRow('适合人群', '${data['product_a']}: ${data['suitable_for_a']}'),
+        if (data['suitable_for_b'] != null)
+          _buildReportRow('', '${data['product_b']}: ${data['suitable_for_b']}'),
+      ],
+      buttonText: '查看详情',
+      onButtonTap: () => _navigateToReport(data),
+    );
+  }
+
+  Widget _buildBuyGuideCard(Map<String, dynamic> data) {
+    return _buildCardWrapper(
+      icon: Icons.shopping_bag,
+      title: '购买指南',
+      accentColor: Colors.green,
+      children: [
+        if (data['target_product'] != null)
+          _buildReportRow('目标商品', data['target_product'].toString()),
+        if (data['best_time'] != null)
+          _buildReportRow('最佳时机', data['best_time'].toString()),
+        if (data['best_platform'] != null)
+          _buildReportRow('推荐平台', data['best_platform'].toString()),
+        if (data['popular_colors'] != null)
+          _buildReportRow('热门配色', data['popular_colors'].toString()),
+        if (data['price_estimate'] != null)
+          _buildReportRow('预估价格', data['price_estimate'].toString()),
+      ],
+      buttonText: '查看详情',
+      onButtonTap: () => _navigateToReport(data),
+    );
+  }
+
+  Widget _buildCardWrapper({
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+    required String buttonText,
+    required VoidCallback onButtonTap,
+    Color accentColor = Constants.brandColor,
+  }) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(Constants.largeRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Constants.brandColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.assignment_turned_in,
-                  size: 18,
-                  color: Constants.brandColor,
-                ),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(Constants.largeRadius),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'AI 决策报告',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Constants.primaryTextColor,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 18,
+                      color: accentColor,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Constants.primaryTextColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...children,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: onButtonTap,
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                  label: Text(buttonText),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          if (data['target_product'] != null)
-            _buildReportRow('目标商品', data['target_product'].toString()),
-          if (data['best_choice'] != null)
-            _buildReportRow('最优选择', data['best_choice'].toString()),
-          if (data['suggestion'] != null)
-            _buildReportRow('AI 建议', data['suggestion'].toString()),
-          if (data['savings'] != null)
-            _buildReportRow('预计节省', '¥${data['savings']}'),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ReportScreen(
-                      productName: data['target_product']?.toString() ?? '未知商品',
-                      reportData: data,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.share, size: 16),
-              label: const Text('分享报告'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Constants.brandColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
+  }
+
+  void _navigateToReport(Map<String, dynamic> data) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReportScreen(
+          productName: data['target_product']?.toString() ??
+              data['product_a']?.toString() ??
+              '未知商品',
+          reportData: data,
+        ),
+      ),
+    );
   }
 
   Widget _buildReportRow(String label, String value) {

@@ -218,20 +218,28 @@ class ApiService {
       body['current_product'] = currentProduct;
     }
 
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/chat'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 30));
+    // 聊天接口：60秒超时 + 1次重试
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        final response = await http.post(
+          Uri.parse('$_baseUrl/api/v1/chat'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 60));
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        throw ApiException('发送消息失败: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        } else {
+          throw ApiException('发送消息失败: ${response.statusCode}');
+        }
+      } on TimeoutException catch (_) {
+        if (attempt == 2) {
+          throw ApiException(ErrorMessages.timeout);
+        }
+        // 重试前等待 1 秒
+        await Future.delayed(const Duration(seconds: 1));
       }
-    } on TimeoutException catch (_) {
-      throw ApiException(ErrorMessages.timeout);
     }
+    return null;
   }
 }
