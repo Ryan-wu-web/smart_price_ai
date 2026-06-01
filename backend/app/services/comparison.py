@@ -156,6 +156,35 @@ class MockDataSource(DataSource):
             {"name": "雅诗兰黛 小棕瓶精华 50ml", "brand": "雅诗兰黛", "category": "精华", "color": "棕色", "price": 935.0},
             {"name": "兰蔻 大粉水 400ml", "brand": "兰蔻", "category": "护肤水", "color": "粉色", "price": 420.0},
             {"name": "SK-II 神仙水 230ml", "brand": "SK-II", "category": "精华", "color": "透明", "price": 1540.0},
+            # 饮料
+            {"name": "农夫山泉 天然水 550ml×24", "brand": "农夫山泉", "category": "饮料", "color": "透明", "price": 33.9},
+            {"name": "可口可乐 经典 330ml×24", "brand": "可口可乐", "category": "饮料", "color": "棕色", "price": 45.9},
+            {"name": "百事可乐 经典 330ml×24", "brand": "百事", "category": "饮料", "color": "棕色", "price": 42.9},
+            {"name": "农夫山泉 NFC橙汁 300ml×10", "brand": "农夫山泉", "category": "饮料", "color": "橙色", "price": 64.9},
+            {"name": "红牛 维生素功能饮料 250ml×24", "brand": "红牛", "category": "饮料", "color": "金色", "price": 129.0},
+            {"name": "东鹏特饮 500ml×24", "brand": "东鹏", "category": "饮料", "color": "金色", "price": 79.9},
+            {"name": "三得利 乌龙茶 500ml×15", "brand": "三得利", "category": "饮料", "color": "棕色", "price": 52.5},
+            {"name": "农夫山泉 茶π 蜜桃乌龙 500ml×15", "brand": "农夫山泉", "category": "饮料", "color": "粉色", "price": 59.9},
+            {"name": "依云 天然矿泉水 330ml×24", "brand": "依云", "category": "饮料", "color": "透明", "price": 89.0},
+            {"name": "维他奶 原味豆奶 250ml×16", "brand": "维他奶", "category": "饮料", "color": "白色", "price": 32.9},
+            # 日用品
+            {"name": "维达 卷纸 4层140g×27卷", "brand": "维达", "category": "日用品", "color": "白色", "price": 59.9},
+            {"name": "清风 抽纸 3层120抽×24包", "brand": "清风", "category": "日用品", "color": "白色", "price": 39.9},
+            {"name": "蓝月亮 洗衣液 3kg", "brand": "蓝月亮", "category": "日用品", "color": "蓝色", "price": 49.9},
+            {"name": "汰渍 洗衣液 2kg", "brand": "汰渍", "category": "日用品", "color": "橙色", "price": 35.9},
+            {"name": "海飞丝 去屑洗发水 750ml", "brand": "海飞丝", "category": "日用品", "color": "蓝色", "price": 56.9},
+            {"name": "潘婷 修护洗发水 750ml", "brand": "潘婷", "category": "日用品", "color": "白色", "price": 49.9},
+            {"name": "舒肤佳 沐浴露 1L", "brand": "舒肤佳", "category": "日用品", "color": "白色", "price": 29.9},
+            {"name": "云南白药 牙膏 180g", "brand": "云南白药", "category": "日用品", "color": "白色", "price": 28.9},
+            {"name": "黑人 牙膏 190g", "brand": "黑人", "category": "日用品", "color": "白色", "price": 19.9},
+            {"name": "高露洁 牙膏 180g", "brand": "高露洁", "category": "日用品", "color": "红色", "price": 15.9},
+            {"name": "心相印 湿巾 80抽×5", "brand": "心相印", "category": "日用品", "color": "白色", "price": 24.9},
+            {"name": "滴露 消毒液 1.2L", "brand": "滴露", "category": "日用品", "color": "棕色", "price": 59.9},
+            # 食品
+            {"name": "良品铺子 每日坚果 750g", "brand": "良品铺子", "category": "零食", "color": "混合", "price": 89.0},
+            {"name": "三只松鼠 夏威夷果 500g", "brand": "三只松鼠", "category": "零食", "color": "棕色", "price": 39.9},
+            {"name": "乐事 原味薯片 104g×6", "brand": "乐事", "category": "零食", "color": "黄色", "price": 29.9},
+            {"name": "卫龙 辣条大礼包 1kg", "brand": "卫龙", "category": "零食", "color": "红色", "price": 35.9},
         ]
 
         platforms = {
@@ -174,8 +203,9 @@ class MockDataSource(DataSource):
                     price = round(jd_price * mult, 2)
                 original_price = round(price * random.uniform(1.1, 1.3), 2)
                 rating = round(random.uniform(4.5, 5.0), 1)
-                url_text = "+".join(item["name"].split()[:3])
-                image_url = f"https://via.placeholder.com/300x300/00B4D8/FFFFFF?text={url_text}"
+                import urllib.parse
+                url_text = urllib.parse.quote(item["name"][:20])
+                image_url = f"https://placehold.jp/300x300/00B4D8/FFFFFF?text={url_text}"
                 self.MOCK_PRODUCTS.append({
                     "name": item["name"],
                     "brand": item["brand"],
@@ -191,10 +221,14 @@ class MockDataSource(DataSource):
 
         self.category_groups = {
             "运动鞋": ["运动鞋", "休闲鞋"],
-            "数码": ["手机", "耳机", "平板", "键盘", "鼠标", "充电器"],
+            "数码": ["手机", "耳机", "平板", "键盘", "鼠标", "充电器", "电脑", "智能穿戴"],
             "服饰": ["T恤", "牛仔裤", "外套", "卫衣", "运动裤", "袜子"],
-            "美妆": ["口红", "面膜", "香水", "护肤套装", "精华"],
+            "美妆": ["口红", "面膜", "香水", "护肤套装", "精华", "护肤水"],
             "家居": ["收纳盒", "台灯", "抱枕", "厨具", "杯子", "床上用品"],
+            "饮料": ["饮料"],
+            "日用品": ["日用品"],
+            "零食": ["零食"],
+            "食品": ["零食", "饮料", "保健品"],
         }
 
         for i, item in enumerate(self.MOCK_PRODUCTS):

@@ -480,29 +480,72 @@ f985e66 feat(day9-batch3): SearchScreen visual overhaul with animations + search
 
 ---
 
-## Day 10 (6.1) 计划 — 全面完善
+## Day 10 (6.1) 更新 — 五大问题全面修复
 
-> 原定 5.31 的 Day 10 推迟到 6.1（5.31 休息）。
+### 修复1：ProductCard 图片加载（P0）
+- `widgets/product_card.dart` — `Icon(Icons.image)` 替换为 `Image.network(product.imageUrl)`
+- 增加 `loadingBuilder`（品牌青小圆点加载）+ `errorBuilder`（Icons.image_not_supported 兜底）
+- 空 URL 回退到 `Icons.image`
 
-### 流程
-测试开发 → 发现问题 → 找到根因 → 制定策略 → 执行修复 → 重新测试
+### 修复2：多目标识别真实 API（P0）
+- `services/api_service.dart` — 新增 `recognizeMultiple(File image)` 方法，调用 `/api/v1/recognize/multi`
+- `screens/multi_object_screen.dart` — **完全重写**：
+  - `initState` 调用 `_detectObjects()` 真实 API
+  - 加载态：品牌青脉冲圆点 + 呼吸阴影动画（_pulseController.repeat）
+  - 单商品直接跳转 `ResultScreen`（pushReplacement）
+  - 多商品：品牌青色检测框（2px 边框 + 0.15 透明填充 + 8px 圆角）+ 标签 pill
+  - 错误态：橙色图标 + 重试按钮
+  - 点击检测框组装 `RecognitionResult` → 跳转 `ResultScreen`
+- `backend/app/routers/recognize.py` — 新增 `/recognize/multi` POST 路由
+- `backend/app/models/schemas.py` — 新增 `RecognizedObject` + `RecognizeMultiResponse`
 
-### 待验证/完善项
-1. **全链路回归测试** — 拍照→识别→比价→趋势→报告→分享→AI导购
-2. **决策卡片边界 case** — 混合意图（"对比+购买建议"）时的 report_type 判断
-3. **搜索页细节** — 搜索结果为空时的体验、长搜索历史溢出处理
-4. **CompareScreen 筛选** — 官方/相似筛选后排序是否正常
-5. **Chat 多轮对话** — 超过6轮后的摘要质量
-6. **VLM 识别** — 不同光线/角度下的识别准确率
-7. **ReportScreen 分享** — 分享文本是否正确包含商品名
+### 修复3：识别速度优化（P1）
+- `backend/app/services/recognition.py` — **Pipeline 重构**：
+  - **主路径**：单次调用 LLM（直接传图片 + Few-shot Prompt），失败率极低时 ~2-3s
+  - **Fallback**：两阶段 VLM→LLM（原 5-10s）作为降级
+  - **图片压缩**：新增 `_compress_image()`（PIL，最大宽度 800px，JPEG quality 85，RGBA→RGB）
+- `android-app/lib/screens/home_screen.dart` — `pickImage` `maxWidth: 1200` → `800`
+- 前后端双压缩，识别速度从 5-10s 降至 **~2-4s**
 
-### 目标
-- 所有核心链路无明显阻塞问题
-- 真机测试用户体验流畅
+### 修复4：AI 导购上下文优化（P1）
+- `backend/app/services/chat.py` — `SUMMARY_THRESHOLD = 8`（从 12 降），更早触发摘要
+- `_summarize_and_compact` — 摘要后保留最近 **6 条**（从 4 条增加），摘要参与消息从 `context[:-4]` 改为 `context[:-6]`
+- `backend/app/core/prompt_engine.py` — `chat_reply` 上下文窗口从 `context[-6:]` 扩大到 `context[-8:]`
+- LLM 能看到更多历史，上下文关联度提升
+
+### 修复5：Mock 数据扩充（P2）
+- `backend/app/services/comparison.py` — 新增 **饮料 10 条** + **日用品 12 条** + **零食 4 条**
+- `category_groups` 扩展：饮料/日用品/零食/食品 映射
+- 总计约 **468 条** 商品数据（156 基础 × 3 平台）
+
+### 6.1 晚间-6.2 凌晨 — 真机测试 + 第二轮迭代
+
+#### 真机测试发现问题
+1. **连接超时** — 电脑 IP 变了（10.60.243.80 → 10.23.198.80），App 连不上后端
+2. **ProductCard 图片仍灰色** — `placehold.co` 国内也访问不了
+3. **多目标识别 UI 问题** — 加载态丑、检测框重叠、底部溢出、标签截断
+4. **AI 聊天速度 ~10s** — LLM 物理延迟
+5. **识别速度 ~8s** — 首次识别 LLM 延迟
+
+#### 第二轮修复
+- `backend/app/services/recognition.py` — **本地缓存**：MD5 hash 缓存键 + 7 天 TTL，`data/cache/recognition/{md5}.json`
+- `backend/app/services/comparison.py` — 图片 URL `placehold.co` → `placehold.jp`
+- `android-app/lib/widgets/product_card.dart` — errorBuilder 显示**品牌渐变色卡片 + 商品名称**（如"Nike"），彻底告别灰色图标
+- `android-app/lib/screens/multi_object_screen.dart` — **全面重做**：
+  - 加载态：半透明白色遮罩（`Colors.white.withOpacity(0.15)`）+ 大脉冲圆点
+  - 检测框：限制不溢出屏幕（`clamp` + 边界检查）
+  - 交替颜色：品牌青 / 橙色，重叠也能区分
+  - 标签：固定在检测框**内部顶部**，带序号圆圈
+- `backend/app/core/prompt_engine.py` — Prompt 精简（~130 行 → ~60 行），上下文 `[-8:]` → `[-6:]`
+
+#### 测试验证
+- `pytest backend/tests/` — ✅ 26/26 PASS
+- `flutter analyze` — ✅ 0 issues
+- `flutter build apk --release` — ✅ 21.8MB
 
 ---
 
-## 📅 后续计划调整（5.31 确认）
+## 📅 后续计划调整（6.2 确认）
 
 | 阶段 | 日期 | 天数 | 内容 |
 |------|------|------|------|

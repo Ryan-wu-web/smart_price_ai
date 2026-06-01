@@ -7,7 +7,7 @@ from app.core.llm_client import LLMClient
 from app.core.prompt_engine import PromptEngine
 
 SESSION_DIR = "data/sessions"
-SUMMARY_THRESHOLD = 12  # 6轮对话 = 12条消息
+SUMMARY_THRESHOLD = 8  # 4轮对话 = 8条消息
 
 
 class ChatService:
@@ -63,7 +63,7 @@ class ChatService:
             history_text = "\n".join(
                 [
                     f"{'用户' if c['role'] == 'user' else '助手'}: {c['content']}"
-                    for c in context[:-4]
+                    for c in context[:-6]
                 ]
             )
             summary_prompt = (
@@ -83,12 +83,12 @@ class ChatService:
                     "role": "system",
                     "content": f"历史对话摘要：{summary}",
                 },
-                *context[-4:],
+                *context[-6:],
             ]
             return compacted
         except Exception:
-            # 摘要失败则只保留最近4条
-            return context[-4:]
+            # 摘要失败则只保留最近6条
+            return context[-6:]
 
     def _save_session(self, session_id: str, context: list[dict[str, Any]]) -> None:
         try:

@@ -8,6 +8,47 @@ class ProductCard extends StatelessWidget {
 
   const ProductCard({super.key, required this.product, this.onTap});
 
+  String _getDisplayName(String fullName) {
+    if (fullName.isEmpty) return '?';
+    final firstSpace = fullName.indexOf(' ');
+    if (firstSpace > 0 && firstSpace <= 10) {
+      return fullName.substring(0, firstSpace);
+    }
+    return fullName.length > 8 ? fullName.substring(0, 8) : fullName;
+  }
+
+  Widget _buildPlaceholder(double size, String productName) {
+    final displayName = _getDisplayName(productName);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Constants.mediumRadius),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF00B4D8), Color(0xFF0077B6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            displayName,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final savings = product.originalPrice != null && product.originalPrice! > product.price
@@ -29,18 +70,39 @@ class ProductCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: imageSize,
-              height: imageSize,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Constants.mediumRadius),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE0E0E0), Color(0xFFF5F5F5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Constants.mediumRadius),
+              child: Container(
+                width: imageSize,
+                height: imageSize,
+                color: const Color(0xFFF5F5F5),
+                child: (product.imageUrl ?? '').isNotEmpty
+                    ? Image.network(
+                        product.imageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Constants.brandColor,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return _buildPlaceholder(imageSize, product.name);
+                        },
+                      )
+                    : const Icon(
+                        Icons.image,
+                        color: Constants.secondaryTextColor,
+                        size: 32,
+                      ),
               ),
-              child: const Icon(Icons.image, color: Constants.secondaryTextColor),
             ),
             const SizedBox(width: 12),
             Expanded(

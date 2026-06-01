@@ -99,3 +99,15 @@ class ChatResponse(BaseModel):
     action: str = Field(default="none")
     action_data: dict[str, Any] = Field(default_factory=dict)
     session_id: str
+
+
+class RecognizedObject(BaseModel):
+    name: str
+    brand: str = ""
+    category: str
+    color: str = ""
+    bbox: dict[str, float] = Field(default_factory=dict)
+
+
+class RecognizeMultiResponse(BaseModel):
+    objects: list[RecognizedObject]

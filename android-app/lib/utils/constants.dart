@@ -11,7 +11,7 @@ class Constants {
   // ═══════════════════════════════════════════
   //  API
   // ═══════════════════════════════════════════
-  static const String apiBaseUrl = 'http://10.60.243.80:8000';
+  static const String apiBaseUrl = 'http://10.23.198.80:8000';
 
   // ═══════════════════════════════════════════
   //  主色调 (Primary Palette)

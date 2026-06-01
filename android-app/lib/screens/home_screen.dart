@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final picker = ImagePicker();
     XFile? picked;
     try {
-      picked = await picker.pickImage(source: source, maxWidth: 1200);
+      picked = await picker.pickImage(source: source, maxWidth: 800);
     } on PlatformException catch (e) {
       if (e.code == 'camera_access_denied') {
         if (!mounted) return;
@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pickMultiObjectImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200);
+    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 800);
     if (picked == null) return;
     final file = File(picked.path);
     if (!mounted) return;

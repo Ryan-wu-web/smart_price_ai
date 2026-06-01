@@ -50,6 +50,34 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> recognizeMultiple(File image) async {
+    if (!await NetworkChecker.isOnline()) {
+      throw ApiException(ErrorMessages.noInternet);
+    }
+    final bytes = await image.readAsBytes();
+    final base64Image = base64Encode(bytes);
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/recognize/multi'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'image_base64': base64Image}),
+      ).timeout(const Duration(seconds: 120));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is! Map<String, dynamic>) {
+          throw ApiException('Invalid server response');
+        }
+        return data;
+      } else {
+        throw ApiException('多目标识别失败: ${response.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      throw ApiException(ErrorMessages.timeout);
+    }
+  }
+
   Future<List<Product>> getSuggestions(
     String category, {
     String? brand,

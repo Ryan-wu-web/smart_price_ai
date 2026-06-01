@@ -39,3 +39,8 @@ android-app/linux/flutter/ephemeral/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime data
+data/
+uvicorn.log
+*.log
