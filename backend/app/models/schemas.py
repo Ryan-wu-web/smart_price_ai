@@ -106,7 +106,7 @@ class RecognizedObject(BaseModel):
     brand: str = ""
     category: str
     color: str = ""
-    bbox: dict[str, float] = Field(default_factory=dict)
+    center: dict[str, float] = Field(default_factory=dict)
 
 
 class RecognizeMultiResponse(BaseModel):

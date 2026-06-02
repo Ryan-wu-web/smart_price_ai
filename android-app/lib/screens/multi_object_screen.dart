@@ -1,10 +1,66 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+
 import '../models/recognition_result.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../utils/error_messages.dart';
+import '../widgets/scan_line_overlay.dart';
 import 'result_screen.dart';
+
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  final bool pointDown;
+
+  _TrianglePainter({required this.color, this.pointDown = true});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path();
+    if (pointDown) {
+      path.moveTo(size.width / 2, size.height);
+      path.lineTo(0, 0);
+      path.lineTo(size.width, 0);
+    } else {
+      path.moveTo(size.width / 2, 0);
+      path.lineTo(0, size.height);
+      path.lineTo(size.width, size.height);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _BubbleData {
+  final int index;
+  final String name;
+  final String brand;
+  final String category;
+  final String color;
+  // 归一化坐标 (0-1)，在 build 中转为屏幕坐标
+  final double normX;
+  final double normY;
+  // 屏幕坐标（由 _computeBubblePositions 计算）
+  double anchorX = 0;
+  double anchorY = 0;
+  double bubbleX = 0;
+  double bubbleY = 0;
+  bool below = false;
+
+  _BubbleData({
+    required this.index,
+    required this.name,
+    required this.brand,
+    required this.category,
+    required this.color,
+    required this.normX,
+    required this.normY,
+  });
+}
 
 class MultiObjectScreen extends StatefulWidget {
   final File imageFile;
@@ -18,23 +74,27 @@ class MultiObjectScreen extends StatefulWidget {
 class _MultiObjectScreenState extends State<MultiObjectScreen>
     with TickerProviderStateMixin {
   late final AnimationController _controller;
-  late final AnimationController _pulseController;
 
   bool _isLoading = true;
   String? _error;
-  List<Map<String, dynamic>> _detectedObjects = [];
+  List<_BubbleData> _bubbles = [];
+
+  static const double _bubbleMaxWidth = 150;
+  static const double _bubbleHeight = 38;
+  static const double _arrowHeight = 8;
+  static const double _minHorizontalGap = 140;
+  static const double _verticalStep = 48;
+  static const double _marginTop = 56;
+  static const double _marginBottom = 24;
+  static const double _marginSide = 8;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 600),
     );
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
     _detectObjects();
   }
 
@@ -68,41 +128,49 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
         return;
       }
 
-      // 多个商品：解析检测框数据
-      final parsed = <Map<String, dynamic>>[];
+      final bubbles = <_BubbleData>[];
       if (objects != null) {
-        for (final item in objects) {
+        for (var i = 0; i < objects.length; i++) {
+          final item = objects[i];
           if (item is! Map<String, dynamic>) continue;
-          final bbox = item['bbox'];
-          Map<String, dynamic> box;
-          if (bbox is List && bbox.length >= 4) {
-            box = {'x': bbox[0], 'y': bbox[1], 'w': bbox[2], 'h': bbox[3]};
-          } else if (bbox is Map<String, dynamic>) {
-            box = {
-              'x': (bbox['x'] ?? 0.0).toDouble(),
-              'y': (bbox['y'] ?? 0.0).toDouble(),
-              'w': (bbox['w'] ?? 0.1).toDouble(),
-              'h': (bbox['h'] ?? 0.1).toDouble(),
-            };
+
+          double cx = 0.5, cy = 0.5;
+          final center = item['center'];
+          if (center is Map<String, dynamic>) {
+            cx = (center['x'] ?? 0.5).toDouble();
+            cy = (center['y'] ?? 0.5).toDouble();
           } else {
-            box = {'x': 0.1, 'y': 0.1, 'w': 0.3, 'h': 0.3};
+            final bbox = item['bbox'];
+            if (bbox is Map<String, dynamic>) {
+              final bx = (bbox['x'] ?? 0.0).toDouble();
+              final by = (bbox['y'] ?? 0.0).toDouble();
+              final bw = (bbox['w'] ?? 0.2).toDouble();
+              final bh = (bbox['h'] ?? 0.2).toDouble();
+              cx = bx + bw / 2;
+              cy = by + bh / 2;
+            } else if (bbox is List && bbox.length >= 4) {
+              cx = (bbox[0] as num).toDouble() + (bbox[2] as num).toDouble() / 2;
+              cy = (bbox[1] as num).toDouble() + (bbox[3] as num).toDouble() / 2;
+            }
           }
-          parsed.add({
-            'name': item['name']?.toString() ?? '未知商品',
-            'brand': item['brand']?.toString() ?? '',
-            'category': item['category']?.toString() ?? '未知',
-            'color': item['color']?.toString() ?? '',
-            'x': box['x']!.toDouble(),
-            'y': box['y']!.toDouble(),
-            'w': box['w']!.toDouble(),
-            'h': box['h']!.toDouble(),
-          });
+
+          bubbles.add(
+            _BubbleData(
+              index: i,
+              name: item['name']?.toString() ?? '未知商品',
+              brand: item['brand']?.toString() ?? '',
+              category: item['category']?.toString() ?? '未知',
+              color: item['color']?.toString() ?? '',
+              normX: cx.clamp(0.0, 1.0),
+              normY: cy.clamp(0.0, 1.0),
+            ),
+          );
         }
       }
 
       if (mounted) {
         setState(() {
-          _detectedObjects = parsed;
+          _bubbles = bubbles;
           _isLoading = false;
         });
         _controller.forward();
@@ -124,12 +192,79 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
     }
   }
 
-  void _onBoxTap(Map<String, dynamic> obj) {
+  void _computeBubblePositions(double screenW, double screenH) {
+    // 0. 将归一化坐标转为屏幕坐标
+    for (final b in _bubbles) {
+      b.anchorX = b.normX * screenW;
+      b.anchorY = b.normY * screenH;
+    }
+
+    // 1. 初始位置：气泡在锚点上方，水平居中于锚点
+    for (final b in _bubbles) {
+      b.bubbleX = b.anchorX;
+      b.bubbleY = b.anchorY - _bubbleHeight - _arrowHeight;
+      b.below = false;
+    }
+
+    // 2. 上方空间不足 → 翻转到下方
+    for (final b in _bubbles) {
+      if (b.bubbleY < _marginTop) {
+        b.below = true;
+        b.bubbleY = b.anchorY + _arrowHeight;
+      }
+    }
+
+    // 3. 按 bubbleX 排序，解决水平重叠（只向下推，不移动锚点）
+    final sorted = List<_BubbleData>.from(_bubbles)
+      ..sort((a, b) => a.bubbleX.compareTo(b.bubbleX));
+
+    for (var i = 1; i < sorted.length; i++) {
+      final curr = sorted[i];
+      for (var j = 0; j < i; j++) {
+        final prev = sorted[j];
+        final dx = (curr.bubbleX - prev.bubbleX).abs();
+        if (dx < _minHorizontalGap) {
+          final minY = prev.bubbleY + _bubbleHeight + _arrowHeight + _verticalStep;
+          if (curr.bubbleY < minY) {
+            curr.bubbleY = minY;
+          }
+        }
+      }
+    }
+
+    // 4. 如果 above 的气泡被推到锚点下方，强制翻转为 below
+    for (final b in _bubbles) {
+      if (!b.below && b.bubbleY + _bubbleHeight > b.anchorY) {
+        b.below = true;
+        b.bubbleY = b.anchorY + _arrowHeight;
+      }
+    }
+
+    // 5. 底部越界检查
+    for (final b in _bubbles) {
+      if (b.bubbleY + _bubbleHeight > screenH - _marginBottom) {
+        b.bubbleY = screenH - _marginBottom - _bubbleHeight;
+      }
+    }
+
+    // 6. 气泡水平边缘 clamp（确保不超出屏幕）
+    for (final b in _bubbles) {
+      const halfW = _bubbleMaxWidth / 2;
+      if (b.bubbleX - halfW < _marginSide) {
+        b.bubbleX = _marginSide + halfW;
+      }
+      if (b.bubbleX + halfW > screenW - _marginSide) {
+        b.bubbleX = screenW - _marginSide - halfW;
+      }
+    }
+  }
+
+  void _onBubbleTap(_BubbleData bubble) {
     final result = RecognitionResult(
-      name: obj['name'] as String,
-      brand: obj['brand'] as String,
-      category: obj['category'] as String,
-      color: obj['color'] as String,
+      name: bubble.name,
+      brand: bubble.brand,
+      category: bubble.category,
+      color: bubble.color,
     );
     Navigator.push(
       context,
@@ -145,131 +280,49 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
   @override
   void dispose() {
     _controller.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final safeTop = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.file(widget.imageFile, fit: BoxFit.cover),
-          // 暗化遮罩（保持图片可见）
-          Container(color: Colors.black.withOpacity(0.2)),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.arrow_back, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _isLoading
-                          ? '正在识别商品...'
-                          : _error != null
-                              ? '识别失败'
-                              : '检测到 ${_detectedObjects.length} 个商品，点击识别',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.7),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+    // 加载态：ScanLineOverlay（和拍照识物完全一致）
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            ScanLineOverlay(
+              child: Image.file(
+                widget.imageFile,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
               ),
             ),
-          ),
-          // 加载态：半透明白色遮罩 + 大脉冲圆点
-          if (_isLoading)
-            Container(
-              color: Colors.white.withOpacity(0.15),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, child) {
-                        return Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Constants.brandColor.withOpacity(
-                              0.2 + 0.5 * _pulseController.value,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Constants.brandColor.withOpacity(
-                                  0.3 + 0.5 * _pulseController.value,
-                                ),
-                                blurRadius: 30 + 20 * _pulseController.value,
-                                spreadRadius: 4 + 6 * _pulseController.value,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'AI 正在识别中...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.8),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          // 错误态
-          if (!_isLoading && _error != null)
+            // 加载页无返回按钮，和拍照识物加载页保持一致
+          ],
+        ),
+      );
+    }
+
+    // 错误态
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(widget.imageFile, fit: BoxFit.cover),
+            Container(color: Colors.black.withOpacity(0.4)),
             Center(
               child: Container(
                 margin: const EdgeInsets.all(32),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -304,144 +357,215 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
                 ),
               ),
             ),
-          // 检测框
-          if (!_isLoading && _error == null)
-            ..._detectedObjects.asMap().entries.map((entry) {
-              final index = entry.key;
-              final obj = entry.value;
-              final delay = index * 0.25;
+          ],
+        ),
+      );
+    }
 
-              // 计算位置，限制不溢出屏幕
-              var boxLeft = obj['x'] * size.width;
-              var boxTop = obj['y'] * size.height;
-              var boxWidth = (obj['w'] * size.width).clamp(80.0, size.width * 0.7);
-              var boxHeight = (obj['h'] * size.height).clamp(50.0, size.height * 0.5);
+    // 结果态：图片 + 气泡标签
+    _computeBubblePositions(size.width, size.height);
 
-              // 确保不超出屏幕
-              if (boxLeft + boxWidth > size.width) {
-                boxLeft = (size.width - boxWidth).clamp(0.0, size.width);
-              }
-              if (boxTop + boxHeight > size.height) {
-                boxTop = (size.height - boxHeight).clamp(safeTop + 50.0, size.height);
-              }
-              if (boxTop < safeTop + 50) {
-                boxTop = safeTop + 50;
-              }
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        removeBottom: true,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 原图
+            Image.file(widget.imageFile, fit: BoxFit.cover),
+            // Vignette 暗角：中心透明，边缘暗化，突出气泡
+            Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [Colors.transparent, Color(0x40000000)],
+                  center: Alignment.center,
+                  radius: 0.85,
+                ),
+              ),
+            ),
+            // 锚点指示器：精致小圆点
+            ..._bubbles.map((bubble) {
+              return Positioned(
+                left: bubble.anchorX - 3,
+                top: bubble.anchorY - 3,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: Constants.brandColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Constants.brandColor.withOpacity(0.5),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            // 连接线：气泡 ↔ 锚点（只在有间距时显示）
+            ..._bubbles.map((bubble) {
+              final startY = bubble.below
+                  ? bubble.anchorY
+                  : bubble.bubbleY + _bubbleHeight + _arrowHeight;
+              final endY = bubble.below
+                  ? bubble.bubbleY - _arrowHeight
+                  : bubble.anchorY;
+              final top = startY < endY ? startY : endY;
+              final height = (endY - startY).abs();
+              if (height <= 2) return const SizedBox.shrink();
 
-              // 交替颜色：品牌青 / 橙色
-              final boxColor = index % 2 == 0
-                  ? Constants.brandColor
-                  : const Color(0xFFFF6B6B);
+              return Positioned(
+                left: bubble.anchorX - 0.75,
+                top: top,
+                child: Container(
+                  width: 1.5,
+                  height: height,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Constants.brandColor.withOpacity(0.0),
+                        Constants.brandColor.withOpacity(0.55),
+                        Constants.brandColor.withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                    borderRadius: BorderRadius.circular(0.75),
+                  ),
+                ),
+              );
+            }),
+            // 气泡标签
+            ..._bubbles.asMap().entries.map((entry) {
+              final bubble = entry.value;
+              final delay = entry.key * 0.12;
 
               return AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
-                  final adjustedValue =
-                      ((_controller.value - delay) / (1 - delay))
-                          .clamp(0.0, 1.0);
+                  final rawValue = ((_controller.value - delay) / (1 - delay))
+                      .clamp(0.0, 1.0);
+                  final adjustedValue = Curves.elasticOut.transform(rawValue);
+                  final opacity = rawValue.clamp(0.0, 1.0);
 
-                  return Opacity(
-                    opacity: adjustedValue.toDouble(),
-                    child: Positioned(
-                      left: boxLeft,
-                      top: boxTop,
-                      child: GestureDetector(
-                        onTap: () => _onBoxTap(obj),
-                        child: SizedBox(
-                          width: boxWidth,
-                          height: boxHeight,
-                          child: Stack(
+                  final arrowOffset = bubble.anchorX - bubble.bubbleX;
+                  final clampedArrowOffset = arrowOffset.clamp(
+                    -_bubbleMaxWidth / 2 + 12,
+                    _bubbleMaxWidth / 2 - 12,
+                  );
+
+                  return Positioned(
+                    left: bubble.bubbleX - _bubbleMaxWidth / 2,
+                    top: bubble.bubbleY,
+                    child: GestureDetector(
+                      onTap: () => _onBubbleTap(bubble),
+                      child: Transform.scale(
+                        scale: adjustedValue,
+                        alignment: Alignment.center,
+                        child: Opacity(
+                          opacity: opacity,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // 外发光
-                              Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 3,
+                              if (!bubble.below)
+                                Transform.translate(
+                                  offset: Offset(clampedArrowOffset, 0),
+                                  child: CustomPaint(
+                                    size: const Size(12, _arrowHeight),
+                                    painter: _TrianglePainter(
+                                      color: const Color(0xFF00D4FF),
+                                      pointDown: true,
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              Container(
+                                constraints: const BoxConstraints(
+                                  maxWidth: _bubbleMaxWidth,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 9,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF00D4FF),
+                                      Color(0xFF00B4D8),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
+                                    // 品牌青外发光
                                     BoxShadow(
-                                      color: boxColor.withOpacity(0.7),
-                                      blurRadius: 15,
-                                      spreadRadius: 3,
+                                      color: const Color(0xFF00B4D8)
+                                          .withOpacity(0.35),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                    ),
+                                    // 下沉阴影
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.25),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
-                              ),
-                              // 内边框 + 填充
-                              Container(
-                                margin: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: boxColor,
-                                    width: 2,
-                                  ),
-                                  color: boxColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                              // 标签固定在内部顶部
-                              Positioned(
-                                top: 4,
-                                left: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: boxColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
                                       ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            '${index + 1}',
-                                            style: TextStyle(
-                                              color: boxColor,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: boxWidth - 50,
-                                        ),
+                                      child: Center(
                                         child: Text(
-                                          obj['name'] as String,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                          '${bubble.index + 1}',
                                           style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
+                                            color: Constants.brandColor,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        bubble.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              if (bubble.below)
+                                Transform.translate(
+                                  offset: Offset(clampedArrowOffset, 0),
+                                  child: CustomPaint(
+                                    size: const Size(12, _arrowHeight),
+                                    painter: _TrianglePainter(
+                                      color: const Color(0xFF00D4FF),
+                                      pointDown: false,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -451,7 +575,8 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
                 },
               );
             }),
-        ],
+          ],
+        ),
       ),
     );
   }

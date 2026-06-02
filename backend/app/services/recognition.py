@@ -143,7 +143,7 @@ class RecognitionService:
         )
 
     async def recognize_multiple(self, image_base64: str) -> RecognizeMultiResponse:
-        """多目标识别：识别图中所有商品。"""
+        """多目标识别：识别图中所有商品，返回每个商品的大致中心点。"""
         image_base64 = self._compress_image(image_base64)
         prompt = (
             "你是一位专业的商品识别专家。请观察图片，识别图中所有独立的商品。\n"
@@ -152,13 +152,14 @@ class RecognitionService:
             "- brand：品牌（无法识别写空字符串）\n"
             "- category：品类\n"
             "- color：主色调\n"
-            "- bbox：检测框位置，格式为 {\"x\": 0-1, \"y\": 0-1, \"w\": 0-1, \"h\": 0-1}\n\n"
+            "- center：商品在图中的大致中心点位置，格式为 {\"x\": 0-1, \"y\": 0-1}\n\n"
             "约束：\n"
             "- 只输出 JSON 数组，不要任何解释文字\n"
             "- 如果图中没有商品，输出空数组 []\n"
-            "- x,y 是检测框左上角坐标，w,h 是宽度和高度（相对图片的归一化坐标 0-1）\n\n"
+            "- x,y 是商品大致中心点坐标（相对图片的归一化坐标 0-1，左上角为 0,0）\n"
+            "- 中心点只需大致准确，不需要精确到像素\n\n"
             "示例：\n"
-            '[{"name": "怡宝纯净水 2.08L", "brand": "怡宝", "category": "饮料", "color": "透明", "bbox": {"x": 0.15, "y": 0.2, "w": 0.4, "h": 0.5}}]'
+            '[{"name": "怡宝纯净水 2.08L", "brand": "怡宝", "category": "饮料", "color": "透明", "center": {"x": 0.35, "y": 0.45}}]'
         )
         messages = [
             {
@@ -179,20 +180,37 @@ class RecognitionService:
             for item in result:
                 if not isinstance(item, dict):
                     continue
-                bbox = item.get("bbox", {})
-                if isinstance(bbox, list) and len(bbox) >= 4:
-                    bbox = {"x": bbox[0], "y": bbox[1], "w": bbox[2], "h": bbox[3]}
-                elif not isinstance(bbox, dict):
-                    bbox = {}
+                center = self._extract_center(item)
                 objects.append(
                     RecognizedObject(
                         name=item.get("name", "未知商品"),
                         brand=item.get("brand", ""),
                         category=item.get("category", "未知"),
                         color=item.get("color", ""),
-                        bbox=bbox,
+                        center=center,
                     )
                 )
             return RecognizeMultiResponse(objects=objects)
         except Exception:
             return RecognizeMultiResponse(objects=[])
+
+    @staticmethod
+    def _extract_center(item: dict) -> dict[str, float]:
+        """从 LLM 返回中提取中心点，兼容 center 和旧版 bbox 格式。"""
+        center = item.get("center", {})
+        if isinstance(center, dict) and "x" in center and "y" in center:
+            return {"x": float(center["x"]), "y": float(center["y"])}
+
+        # 兼容旧版 bbox：如果 LLM 返回了 bbox，计算其中心点
+        bbox = item.get("bbox", {})
+        if isinstance(bbox, list) and len(bbox) >= 4:
+            x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
+            return {"x": float(x) + float(w) / 2, "y": float(y) + float(h) / 2}
+        if isinstance(bbox, dict):
+            x = float(bbox.get("x", 0))
+            y = float(bbox.get("y", 0))
+            w = float(bbox.get("w", 0))
+            h = float(bbox.get("h", 0))
+            return {"x": x + w / 2, "y": y + h / 2}
+
+        return {}
