@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import uuid
 from typing import Any
 
@@ -107,7 +108,9 @@ class ChatService:
     ):
         """
         流式聊天：yield JSON chunk。
-        前半段 yield 逐字 reply，最后 yield 包含完整 action/action_data 的 done 标记。
+        实时从 LLM 返回的 JSON 片段中提取 reply 纯文本，
+        只把纯文本增量发送给前端，避免原始 JSON 结构泄漏。
+        最后 yield 包含完整 action/action_data 的 done 标记。
         """
         if not session_id:
             session_id = str(uuid.uuid4())
@@ -124,26 +127,43 @@ class ChatService:
         prompt = PromptEngine.chat_reply(message, context, current_product)
         messages = [{"role": "user", "content": prompt}]
 
-        # 收集完整回复，用于后续解析 action/action_data
-        full_reply = ""
+        # 实时从 JSON 片段中提取 reply 纯文本
+        buffer = ""
+        last_reply = ""
         async for chunk in self.llm_client.chat_stream(messages):
-            full_reply += chunk
-            yield json.dumps(
-                {"reply": chunk, "session_id": session_id},
-                ensure_ascii=False,
-            )
+            buffer += chunk
+            current_reply = ""
 
-        # 尝试将完整回复解析为 JSON
-        reply_text = ""
+            # 尝试 1：完整 JSON 解析（最准确）
+            try:
+                parsed = json.loads(buffer)
+                current_reply = parsed.get("reply", "")
+            except json.JSONDecodeError:
+                # 尝试 2：正则提取 reply 字段（不完整 JSON 时）
+                match = re.search(r'"reply"\s*:\s*"([^"]*)"', buffer)
+                if match:
+                    current_reply = match.group(1)
+
+            # 只发送新增的文本
+            new_text = current_reply[len(last_reply):]
+            if new_text:
+                yield json.dumps(
+                    {"reply": new_text, "session_id": session_id},
+                    ensure_ascii=False,
+                )
+                last_reply = current_reply
+
+        # 流结束后，用完整解析结果兜底
+        reply_text = last_reply
         action = "none"
         action_data = {}
         try:
-            parsed = json.loads(full_reply)
-            reply_text = parsed.get("reply", full_reply)
+            parsed = json.loads(buffer)
+            reply_text = parsed.get("reply", last_reply)
             action = parsed.get("action", "none")
             action_data = parsed.get("action_data", {})
         except json.JSONDecodeError:
-            reply_text = full_reply
+            pass
 
         if not isinstance(action_data, dict):
             action_data = {}

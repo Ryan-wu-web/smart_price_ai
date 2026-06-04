@@ -158,16 +158,9 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
                 key: ValueKey<String>(_stages[_stageIndex]),
                 style: const TextStyle(
                   color: Constants.brandColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
-                  shadows: [
-                    Shadow(
-                      color: Color(0x6600B4D8),
-                      blurRadius: 8,
-                      offset: Offset(0, 0),
-                    ),
-                  ],
                 ),
               ),
             ),
