@@ -153,12 +153,7 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
                   ),
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.35),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              child: RepaintBoundary(
                 child: Text(
                   _stages[_stageIndex],
                   key: ValueKey<String>(_stages[_stageIndex]),
