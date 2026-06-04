@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 
+/// 识别加载页：扫描线 + 脉冲圆点 + 进度阶段文字
+/// 参考 frontend-design skill — 现代极简科技风
 class ScanLineOverlay extends StatefulWidget {
   final Widget child;
 
@@ -17,6 +19,16 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
+  // 进度阶段：每 2 秒切换一次
+  final List<String> _stages = const [
+    '正在上传图片…',
+    '正在分析商品特征…',
+    '正在识别品牌和品类…',
+    '正在生成结果…',
+    '即将完成，请稍候…',
+  ];
+  int _stageIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -24,7 +36,18 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-    _controller.repeat();
+    // 每次动画循环完成时切换进度阶段，然后重新开始
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() {
+          if (_stageIndex < _stages.length - 1) {
+            _stageIndex++;
+          }
+        });
+        _controller.forward(from: 0.0);
+      }
+    });
+    _controller.forward();
   }
 
   @override
@@ -107,6 +130,46 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
                   spreadRadius: 3,
                 ),
               ],
+            ),
+          ),
+        ),
+        // 进度阶段文字（屏幕下方居中，脉冲圆点上方）
+        Positioned(
+          top: screenHeight * 0.62,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.3),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: Text(
+                _stages[_stageIndex],
+                key: ValueKey<String>(_stages[_stageIndex]),
+                style: const TextStyle(
+                  color: Constants.brandColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                  shadows: [
+                    Shadow(
+                      color: Color(0x6600B4D8),
+                      blurRadius: 8,
+                      offset: Offset(0, 0),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

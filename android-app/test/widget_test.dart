@@ -10,14 +10,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_price_ai/main.dart';
 
 void main() {
-  testWidgets('App launches and shows home screen', (WidgetTester tester) async {
+  testWidgets('App launches and shows splash screen', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const SmartPriceAIApp());
 
-    // Verify that the home screen is displayed with expected content.
-    expect(find.text('Hi, User'), findsOneWidget);
-    expect(find.text('今天想买点什么？'), findsOneWidget);
-    expect(find.text('拍照识物'), findsOneWidget);
+    // Verify that the splash screen is displayed with expected content.
+    expect(find.textContaining('SMART'), findsOneWidget);
+    expect(find.textContaining('PRICE AI'), findsOneWidget);
+    expect(find.textContaining('AI 拍照识物'), findsOneWidget);
   });
 }
 
