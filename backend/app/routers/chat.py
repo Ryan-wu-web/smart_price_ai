@@ -36,7 +36,9 @@ async def chat_stream(request: ChatRequest):
             async for chunk in service.chat_stream(
                 request.message, request.session_id, request.current_product
             ):
-                yield f"data: {chunk}\n\n"
+                # 确保 chunk 中没有换行符，保护 SSE 单行格式
+                safe_chunk = chunk.replace("\n", " ").replace("\r", "")
+                yield f"data: {safe_chunk}\n\n"
 
         return StreamingResponse(
             event_generator(),

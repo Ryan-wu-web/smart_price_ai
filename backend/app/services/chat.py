@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -144,13 +145,17 @@ class ChatService:
                 if match:
                     current_reply = match.group(1)
 
-            # 只发送新增的文本
+            # 只发送新增的文本，拆成单字符 + 延迟，实现打字机效果
             new_text = current_reply[len(last_reply):]
             if new_text:
-                yield json.dumps(
-                    {"reply": new_text, "session_id": session_id},
-                    ensure_ascii=False,
-                )
+                for char in new_text:
+                    if char in "\n\r":
+                        continue  # 跳过换行符，保护 SSE 单行格式
+                    yield json.dumps(
+                        {"reply": char, "session_id": session_id},
+                        ensure_ascii=False,
+                    )
+                    await asyncio.sleep(0.015)  # 15ms 每字
                 last_reply = current_reply
 
         # 流结束后，用完整解析结果兜底

@@ -153,14 +153,24 @@ class _ScanLineOverlayState extends State<ScanLineOverlay>
                   ),
                 );
               },
-              child: Text(
-                _stages[_stageIndex],
-                key: ValueKey<String>(_stages[_stageIndex]),
-                style: const TextStyle(
-                  color: Constants.brandColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _stages[_stageIndex],
+                  key: ValueKey<String>(_stages[_stageIndex]),
+                  style: const TextStyle(
+                    color: Constants.brandColor,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    decoration: TextDecoration.none,
+                    decorationColor: Colors.transparent,
+                    height: 1.0,
+                  ),
                 ),
               ),
             ),
