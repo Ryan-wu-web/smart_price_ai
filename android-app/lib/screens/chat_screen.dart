@@ -80,72 +80,91 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
+    // 创建流式 AI 消息占位
+    final streamMsgId = '${DateTime.now().millisecondsSinceEpoch}_stream';
+    setState(() {
+      _messages.add(ChatMessage(
+        id: streamMsgId,
+        text: '',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+    });
+
     try {
-      final response = await ApiService().sendChat(
+      await ApiService().sendChatStream(
         text,
         sessionId: _sessionId,
         currentProduct: _currentProduct?.toJson(),
-      );
+        onChunk: (chunk) {
+          if (!mounted) return;
+          setState(() {
+            final msg = _messages.firstWhere((m) => m.id == streamMsgId);
+            msg.text += chunk;
+          });
+          _scrollToBottom();
+        },
+        onDone: (response) {
+          if (!mounted) return;
 
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+          final reply = response['reply']?.toString() ?? '';
+          final newSessionId = response['session_id']?.toString() ??
+              response['sessionId']?.toString();
+          if (newSessionId != null) _sessionId = newSessionId;
 
-      if (!mounted) return;
-      if (response != null) {
-        final reply = response['reply']?.toString() ??
-            response['message']?.toString() ??
-            '抱歉，我没有理解您的问题。';
-        final newSessionId = response['session_id']?.toString() ??
-            response['sessionId']?.toString();
-        if (newSessionId != null) _sessionId = newSessionId;
+          // action 兜底
+          String action = response['action']?.toString() ?? 'none';
+          if (action == 'none' && _containsReportKeywords(text)) {
+            action = 'report';
+          }
 
-        // action 兜底：如果 LLM 返回 none 但用户消息包含触发词，强制改为 report
-        String action = response['action']?.toString() ?? 'none';
-        if (action == 'none' && _containsReportKeywords(text)) {
-          action = 'report';
-        }
+          // 提取当前商品
+          final currentProductData = response['current_product'] as Map<String, dynamic>?;
+          if (currentProductData != null && currentProductData['name'] != null) {
+            _currentProduct = Product(
+              id: currentProductData['id']?.toString() ?? 'temp',
+              name: currentProductData['name']?.toString() ?? '未知商品',
+              brand: currentProductData['brand']?.toString() ?? '',
+              category: currentProductData['category']?.toString() ?? '',
+              price: (currentProductData['price'] as num?)?.toDouble() ?? 0.0,
+              platform: currentProductData['platform']?.toString() ?? '',
+              rating: (currentProductData['rating'] as num?)?.toDouble() ?? 0.0,
+              tags: (currentProductData['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+              originalPrice: (currentProductData['original_price'] as num?)?.toDouble() ?? 0.0,
+              imageUrl: currentProductData['image_url']?.toString() ?? '',
+            );
+          }
 
-        // 从 LLM 回复中提取当前讨论的商品
-        final currentProductData = response['current_product'] as Map<String, dynamic>?;
-        if (currentProductData != null && currentProductData['name'] != null) {
-          _currentProduct = Product(
-            id: currentProductData['id']?.toString() ?? 'temp',
-            name: currentProductData['name']?.toString() ?? '未知商品',
-            brand: currentProductData['brand']?.toString() ?? '',
-            category: currentProductData['category']?.toString() ?? '',
-            price: (currentProductData['price'] as num?)?.toDouble() ?? 0.0,
-            platform: currentProductData['platform']?.toString() ?? '',
-            rating: (currentProductData['rating'] as num?)?.toDouble() ?? 0.0,
-            tags: (currentProductData['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-            originalPrice: (currentProductData['original_price'] as num?)?.toDouble() ?? 0.0,
-            imageUrl: currentProductData['image_url']?.toString() ?? '',
+          setState(() {
+            _isLoading = false;
+            final msg = _messages.firstWhere((m) => m.id == streamMsgId);
+            msg.text = reply.isNotEmpty ? reply : msg.text;
+            msg.action = action;
+            msg.actionData = response['action_data'] as Map<String, dynamic>? ??
+                response['actionData'] as Map<String, dynamic>?;
+          });
+          _scrollToBottom();
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _isLoading = false;
+            final msg = _messages.firstWhere((m) => m.id == streamMsgId);
+            msg.text = '发送消息失败: $error';
+          });
+          _scrollToBottom();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('发送消息失败: $error'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
-        }
-
-        setState(() {
-          _messages.add(ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            text: reply,
-            isUser: false,
-            timestamp: DateTime.now(),
-            action: action,
-            actionData: response['action_data'] as Map<String, dynamic>? ??
-                response['actionData'] as Map<String, dynamic>?,
-          ));
-        });
-        _scrollToBottom();
-      }
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('发送消息失败: $e'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
   }
 
@@ -472,7 +491,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (msg.action == 'report' && msg.actionData != null) {
                   return _buildDecisionCard(msg.actionData!);
                 }
-                return AnimatedChatBubble(message: msg, index: index);
+                // 最后一条 AI 消息且正在流式输出时，显示脉冲光标
+                final isStreaming = _isLoading &&
+                    !msg.isUser &&
+                    index == _messages.length - 1;
+                return AnimatedChatBubble(
+                  message: msg,
+                  index: index,
+                  isStreaming: isStreaming,
+                );
               },
             ),
           ),

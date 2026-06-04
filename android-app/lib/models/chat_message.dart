@@ -1,10 +1,10 @@
 class ChatMessage {
   final String id;
-  final String text;
+  String text;              // 流式更新需要可变
   final bool isUser;
   final DateTime timestamp;
-  final String? action;
-  final Map<String, dynamic>? actionData;
+  String? action;           // 流式结束后更新
+  Map<String, dynamic>? actionData; // 流式结束后更新
 
   ChatMessage({
     required this.id,

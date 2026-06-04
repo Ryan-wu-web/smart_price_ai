@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.models.schemas import ChatRequest, ChatResponse
 from app.services.chat import ChatService
@@ -22,4 +23,25 @@ async def chat(request: ChatRequest):
         raise
     except Exception as e:
         logger.error(f"chat failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """SSE 流式聊天：逐字返回 AI 回复。"""
+    try:
+        service = ChatService()
+
+        async def event_generator():
+            async for chunk in service.chat_stream(
+                request.message, request.session_id, request.current_product
+            ):
+                yield f"data: {chunk}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+        )
+    except Exception as e:
+        logger.error(f"chat stream failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

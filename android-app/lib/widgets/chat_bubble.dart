@@ -4,8 +4,13 @@ import '../utils/constants.dart';
 
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
+  final bool isStreaming;
 
-  const ChatBubble({super.key, required this.message});
+  const ChatBubble({
+    super.key,
+    required this.message,
+    this.isStreaming = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,13 +49,25 @@ class ChatBubble extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: message.isUser ? Colors.white : Constants.primaryTextColor,
-                  height: 1.5,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: message.isUser ? Colors.white : Constants.primaryTextColor,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  if (isStreaming) ...[
+                    const SizedBox(width: 6),
+                    _buildStreamCursor(),
+                  ],
+                ],
               ),
             ),
           ),
@@ -59,6 +76,44 @@ class ChatBubble extends StatelessWidget {
             _buildUserAvatar(),
           ],
         ],
+      ),
+    );
+  }
+
+  /// 流式光标：品牌青色脉冲圆点（参考 ScanLineOverlay 风格）
+  Widget _buildStreamCursor() {
+    return SizedBox(
+      width: 8,
+      height: 16,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOut,
+          builder: (context, value, child) {
+            final opacity = 0.3 + (value < 0.5 ? value * 2 : (1 - value) * 2) * 0.7;
+            final scale = 0.6 + (value < 0.5 ? value * 2 : (1 - value) * 2) * 0.4;
+            return Transform.scale(
+              scale: scale,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Constants.brandColor.withOpacity(opacity),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Constants.brandColor.withOpacity(opacity * 0.5),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

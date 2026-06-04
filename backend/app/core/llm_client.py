@@ -24,3 +24,31 @@ class LLMClient(BaseAPIClient):
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
         return json.loads(text)
+
+    async def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ):
+        """
+        流式聊天：yield 每一块的文本内容。
+        解析火山引擎 SSE 格式：data: {...}
+        """
+        async for line in self._post_stream(messages, temperature, max_tokens):
+            if not line.startswith("data: "):
+                continue
+            data = line[6:]  # 去掉 "data: " 前缀
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+                content = (
+                    chunk.get("choices", [{}])[0]
+                    .get("delta", {})
+                    .get("content", "")
+                )
+                if content:
+                    yield content
+            except (json.JSONDecodeError, IndexError, KeyError):
+                continue

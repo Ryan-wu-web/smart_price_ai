@@ -270,4 +270,56 @@ class ApiService {
     }
     return null;
   }
+
+  /// SSE 流式聊天：逐字返回 AI 回复
+  Future<void> sendChatStream(
+    String message, {
+    String? sessionId,
+    Map<String, dynamic>? currentProduct,
+    required void Function(String chunk) onChunk,
+    required void Function(Map<String, dynamic> finalData) onDone,
+    required void Function(String error) onError,
+  }) async {
+    if (!await NetworkChecker.isOnline()) {
+      onError(ErrorMessages.noInternet);
+      return;
+    }
+
+    final body = <String, dynamic>{'message': message};
+    if (sessionId != null) body['session_id'] = sessionId;
+    if (currentProduct != null) body['current_product'] = currentProduct;
+
+    try {
+      final request = http.Request(
+        'POST',
+        Uri.parse('$_baseUrl/api/v1/chat/stream'),
+      )
+        ..headers['Content-Type'] = 'application/json'
+        ..body = jsonEncode(body);
+
+      final streamedResponse = await http.Client().send(request);
+
+      if (streamedResponse.statusCode == 200) {
+        await for (final line in streamedResponse.stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())) {
+          if (line.startsWith('data: ')) {
+            final data = line.substring(6);
+            final jsonData = jsonDecode(data) as Map<String, dynamic>;
+            if (jsonData['done'] == true) {
+              onDone(jsonData);
+            } else {
+              onChunk(jsonData['reply']?.toString() ?? '');
+            }
+          }
+        }
+      } else {
+        onError('发送消息失败: ${streamedResponse.statusCode}');
+      }
+    } on TimeoutException catch (_) {
+      onError(ErrorMessages.timeout);
+    } catch (e) {
+      onError('发送消息失败: $e');
+    }
+  }
 }

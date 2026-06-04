@@ -99,6 +99,71 @@ class ChatService:
         except Exception:
             pass
 
+    async def chat_stream(
+        self,
+        message: str,
+        session_id: str | None = None,
+        current_product: dict[str, Any] | None = None,
+    ):
+        """
+        流式聊天：yield JSON chunk。
+        前半段 yield 逐字 reply，最后 yield 包含完整 action/action_data 的 done 标记。
+        """
+        if not session_id:
+            session_id = str(uuid.uuid4())
+
+        context = self._sessions.get(session_id)
+        if context is None:
+            context = self._load_session(session_id)
+
+        context.append({"role": "user", "content": message})
+
+        if len(context) > SUMMARY_THRESHOLD:
+            context = await self._summarize_and_compact(context)
+
+        prompt = PromptEngine.chat_reply(message, context, current_product)
+        messages = [{"role": "user", "content": prompt}]
+
+        # 收集完整回复，用于后续解析 action/action_data
+        full_reply = ""
+        async for chunk in self.llm_client.chat_stream(messages):
+            full_reply += chunk
+            yield json.dumps(
+                {"reply": chunk, "session_id": session_id},
+                ensure_ascii=False,
+            )
+
+        # 尝试将完整回复解析为 JSON
+        reply_text = ""
+        action = "none"
+        action_data = {}
+        try:
+            parsed = json.loads(full_reply)
+            reply_text = parsed.get("reply", full_reply)
+            action = parsed.get("action", "none")
+            action_data = parsed.get("action_data", {})
+        except json.JSONDecodeError:
+            reply_text = full_reply
+
+        if not isinstance(action_data, dict):
+            action_data = {}
+
+        context.append({"role": "assistant", "content": reply_text})
+        self._sessions[session_id] = context
+        self._save_session(session_id, context)
+
+        # 发送最终 done 事件，包含完整的 action/action_data
+        yield json.dumps(
+            {
+                "reply": reply_text,
+                "action": action,
+                "action_data": action_data,
+                "session_id": session_id,
+                "done": True,
+            },
+            ensure_ascii=False,
+        )
+
     def _load_session(self, session_id: str) -> list[dict[str, Any]]:
         try:
             filepath = os.path.join(SESSION_DIR, f"{session_id}.json")

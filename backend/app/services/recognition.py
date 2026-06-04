@@ -12,8 +12,8 @@ from app.core.prompt_engine import PromptEngine
 from app.core.vlm_client import VLMClient
 from app.models.schemas import RecognizeResponse, RecognizedObject, RecognizeMultiResponse
 
-MAX_IMAGE_WIDTH = 800
-JPEG_QUALITY = 85
+MAX_IMAGE_WIDTH = 600
+JPEG_QUALITY = 75
 CACHE_DIR = "data/cache/recognition"
 CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 天
 
@@ -28,14 +28,29 @@ class RecognitionService:
         self.llm_client = llm_client or LLMClient()
 
     @staticmethod
-    def _cache_key(image_base64: str) -> str:
-        return hashlib.md5(image_base64.encode("utf-8")).hexdigest()
+    def _perceptual_hash(image_base64: str) -> str:
+        """
+        差值哈希 dHash：对图片进行 8x8 灰度采样后，比较相邻像素亮度差异。
+        对微小像素变化（重新拍照、光照差异、JPEG 压缩差异）有良好容忍度。
+        """
+        try:
+            raw = base64.b64decode(image_base64)
+            img = Image.open(io.BytesIO(raw)).convert("L").resize((9, 8), Image.LANCZOS)
+            diff = []
+            for row in range(8):
+                for col in range(8):
+                    left = img.getpixel((col, row))
+                    right = img.getpixel((col + 1, row))
+                    diff.append("1" if left > right else "0")
+            return "".join(diff)
+        except Exception:
+            # 感知哈希失败时回退到 MD5（兜底，保证不崩溃）
+            return hashlib.md5(image_base64.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _load_from_cache(image_base64: str) -> RecognizeResponse | None:
+    def _load_from_cache(cache_key: str) -> RecognizeResponse | None:
         try:
-            key = RecognitionService._cache_key(image_base64)
-            path = os.path.join(CACHE_DIR, f"{key}.json")
+            path = os.path.join(CACHE_DIR, f"{cache_key}.json")
             if not os.path.exists(path):
                 return None
             with open(path, "r", encoding="utf-8") as f:
@@ -48,11 +63,10 @@ class RecognitionService:
             return None
 
     @staticmethod
-    def _save_to_cache(image_base64: str, result: RecognizeResponse) -> None:
+    def _save_to_cache(cache_key: str, result: RecognizeResponse) -> None:
         try:
             os.makedirs(CACHE_DIR, exist_ok=True)
-            key = RecognitionService._cache_key(image_base64)
-            path = os.path.join(CACHE_DIR, f"{key}.json")
+            path = os.path.join(CACHE_DIR, f"{cache_key}.json")
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(
                     {"timestamp": time.time(), "result": result.model_dump()},
@@ -85,13 +99,18 @@ class RecognitionService:
 
     async def recognize(self, image_base64: str) -> RecognizeResponse:
         """单次调用主路径，失败时 fallback 到两阶段。"""
-        # 检查缓存
-        cached = self._load_from_cache(image_base64)
+        # 1. 先压缩图片（标准化尺寸、去除 EXIF 元数据）
+        image_base64 = self._compress_image(image_base64)
+
+        # 2. 计算感知哈希作为缓存 key
+        cache_key = self._perceptual_hash(image_base64)
+
+        # 3. 检查缓存（查/存使用同一 key）
+        cached = self._load_from_cache(cache_key)
         if cached:
             return cached
 
-        image_base64 = self._compress_image(image_base64)
-        # 主路径：直接调用 LLM，传入图片 + 识别 Prompt
+        # 4. 主路径：直接调用 LLM，传入图片 + 识别 Prompt
         prompt = (
             "你是一位专业的商品识别专家。请观察图片中的商品，"
             "直接以 JSON 格式输出：name（商品名称）、brand（品牌，未知为空字符串）、"
@@ -116,12 +135,12 @@ class RecognitionService:
         try:
             result = await self.llm_client.chat_json(messages, temperature=0.3)
             parsed = self._parse_recognize_result(result)
-            self._save_to_cache(image_base64, parsed)
+            self._save_to_cache(cache_key, parsed)
             return parsed
         except Exception:
             # Fallback：两阶段识别
             parsed = await self._recognize_two_stage(image_base64)
-            self._save_to_cache(image_base64, parsed)
+            self._save_to_cache(cache_key, parsed)
             return parsed
 
     async def _recognize_two_stage(self, image_base64: str) -> RecognizeResponse:
@@ -144,7 +163,28 @@ class RecognitionService:
 
     async def recognize_multiple(self, image_base64: str) -> RecognizeMultiResponse:
         """多目标识别：识别图中所有商品，返回每个商品的大致中心点。"""
+        # 1. 先压缩图片
         image_base64 = self._compress_image(image_base64)
+
+        # 2. 计算感知哈希作为缓存 key
+        cache_key = self._perceptual_hash(image_base64)
+
+        # 3. 检查缓存
+        cached = self._load_from_cache(cache_key)
+        if cached:
+            # 单目标缓存命中时，包装为单对象的 multi 响应
+            return RecognizeMultiResponse(
+                objects=[
+                    RecognizedObject(
+                        name=cached.name,
+                        brand=cached.brand,
+                        category=cached.category,
+                        color=cached.color,
+                        center={},
+                    )
+                ]
+            )
+
         prompt = (
             "你是一位专业的商品识别专家。请观察图片，识别图中所有独立的商品。\n"
             "对每件商品，输出以下字段：\n"

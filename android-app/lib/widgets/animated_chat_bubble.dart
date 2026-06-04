@@ -6,11 +6,13 @@ import 'chat_bubble.dart';
 class AnimatedChatBubble extends StatelessWidget {
   final ChatMessage message;
   final int index;
+  final bool isStreaming;
 
   const AnimatedChatBubble({
     super.key,
     required this.message,
     required this.index,
+    this.isStreaming = false,
   });
 
   @override
@@ -30,7 +32,7 @@ class AnimatedChatBubble extends StatelessWidget {
           ),
         );
       },
-      child: ChatBubble(message: message),
+      child: ChatBubble(message: message, isStreaming: isStreaming),
     );
   }
 }
