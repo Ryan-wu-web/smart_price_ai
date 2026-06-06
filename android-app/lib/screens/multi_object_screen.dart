@@ -79,7 +79,7 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
   String? _error;
   List<_BubbleData> _bubbles = [];
 
-  static const double _bubbleMaxWidth = 150;
+  static const double _bubbleMaxWidth = 160;
   static const double _bubbleHeight = 38;
   static const double _arrowHeight = 8;
   static const double _minHorizontalGap = 140;
@@ -488,32 +488,28 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
                                   maxWidth: _bubbleMaxWidth,
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 9,
+                                  horizontal: 14,
+                                  vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF00D4FF),
-                                      Color(0xFF00B4D8),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  color: const Color(0xFF1A1A2E).withOpacity(0.92),
                                   borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFF00B4D8).withOpacity(0.3),
+                                    width: 1,
+                                  ),
                                   boxShadow: [
-                                    // 品牌青外发光
+                                    // 柔和品牌青外发光
                                     BoxShadow(
-                                      color: const Color(0xFF00B4D8)
-                                          .withOpacity(0.35),
-                                      blurRadius: 20,
-                                      spreadRadius: 2,
+                                      color: const Color(0xFF00B4D8).withOpacity(0.15),
+                                      blurRadius: 16,
+                                      spreadRadius: 0,
                                     ),
-                                    // 下沉阴影
+                                    // 紧凑下沉阴影
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.25),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 6),
+                                      color: Colors.black.withOpacity(0.4),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
