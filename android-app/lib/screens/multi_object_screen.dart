@@ -380,9 +380,9 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
             Container(
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [Colors.transparent, Color(0x40000000)],
+                  colors: [Colors.transparent, Color(0x60000000)],
                   center: Alignment.center,
-                  radius: 0.85,
+                  radius: 0.80,
                 ),
               ),
             ),
