@@ -386,30 +386,49 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
                 ),
               ),
             ),
-            // 锚点指示器：空心圆环
-            ..._bubbles.map((bubble) {
-              return Positioned(
-                left: bubble.anchorX - 4,
-                top: bubble.anchorY - 4,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Constants.brandColor,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Constants.brandColor.withOpacity(0.5),
-                        blurRadius: 8,
-                        spreadRadius: 0,
+            // 锚点指示器：空心圆环 + 脉冲动画
+            ..._bubbles.asMap().entries.map((entry) {
+              final bubble = entry.value;
+              final delay = entry.key * 0.08;
+
+              return AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  final rawValue = ((_controller.value - delay) / (1 - delay))
+                      .clamp(0.0, 1.0);
+                  final pulsePhase = rawValue.clamp(0.0, 0.15) / 0.15;
+                  final pulseScale = 1.0 + (pulsePhase < 1.0 ? pulsePhase * 0.5 : 0.0);
+                  final pulseOpacity = pulsePhase < 1.0
+                      ? 1.0 - pulsePhase * 0.3
+                      : 1.0;
+
+                  return Positioned(
+                    left: bubble.anchorX - 4 * pulseScale,
+                    top: bubble.anchorY - 4 * pulseScale,
+                    child: Opacity(
+                      opacity: pulseOpacity,
+                      child: Container(
+                        width: 8 * pulseScale,
+                        height: 8 * pulseScale,
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Constants.brandColor,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Constants.brandColor.withOpacity(0.5 * pulseOpacity),
+                              blurRadius: 8 * pulseScale,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             }),
             // 连接线：气泡 ↔ 锚点（只在有间距时显示）
