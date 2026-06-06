@@ -520,14 +520,14 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
                                       width: 22,
                                       height: 22,
                                       decoration: const BoxDecoration(
-                                        color: Colors.white,
+                                        color: Constants.brandColor,
                                         shape: BoxShape.circle,
                                       ),
                                       child: Center(
                                         child: Text(
                                           '${bubble.index + 1}',
                                           style: const TextStyle(
-                                            color: Constants.brandColor,
+                                            color: Colors.white,
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                           ),
