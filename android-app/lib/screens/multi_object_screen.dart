@@ -421,21 +421,14 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
               if (height <= 2) return const SizedBox.shrink();
 
               return Positioned(
-                left: bubble.anchorX - 0.75,
+                left: bubble.anchorX - 1,
                 top: top,
                 child: Container(
-                  width: 1.5,
+                  width: 2,
                   height: height,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Constants.brandColor.withOpacity(0.0),
-                        Constants.brandColor.withOpacity(0.55),
-                        Constants.brandColor.withOpacity(0.0),
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                    borderRadius: BorderRadius.circular(0.75),
+                    color: Constants.brandColor.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(1),
                   ),
                 ),
               );
