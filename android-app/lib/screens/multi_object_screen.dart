@@ -386,22 +386,26 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
                 ),
               ),
             ),
-            // 锚点指示器：精致小圆点
+            // 锚点指示器：空心圆环
             ..._bubbles.map((bubble) {
               return Positioned(
-                left: bubble.anchorX - 3,
-                top: bubble.anchorY - 3,
+                left: bubble.anchorX - 4,
+                top: bubble.anchorY - 4,
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  width: 8,
+                  height: 8,
                   decoration: BoxDecoration(
-                    color: Constants.brandColor,
+                    color: Colors.transparent,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Constants.brandColor,
+                      width: 2,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Constants.brandColor.withOpacity(0.5),
-                        blurRadius: 6,
-                        spreadRadius: 1,
+                        blurRadius: 8,
+                        spreadRadius: 0,
                       ),
                     ],
                   ),
