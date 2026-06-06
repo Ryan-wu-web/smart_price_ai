@@ -93,7 +93,7 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 450),
     );
     _detectObjects();
   }
@@ -440,14 +440,14 @@ class _MultiObjectScreenState extends State<MultiObjectScreen>
             // 气泡标签
             ..._bubbles.asMap().entries.map((entry) {
               final bubble = entry.value;
-              final delay = entry.key * 0.12;
+              final delay = entry.key * 0.08;
 
               return AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
                   final rawValue = ((_controller.value - delay) / (1 - delay))
                       .clamp(0.0, 1.0);
-                  final adjustedValue = Curves.elasticOut.transform(rawValue);
+                  final adjustedValue = Curves.easeOutBack.transform(rawValue);
                   final opacity = rawValue.clamp(0.0, 1.0);
 
                   final arrowOffset = bubble.anchorX - bubble.bubbleX;
