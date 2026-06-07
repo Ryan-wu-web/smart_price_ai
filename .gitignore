@@ -44,3 +44,7 @@ Thumbs.db
 data/
 uvicorn.log
 *.log
+
+# 本地文档（不提交）
+pre_interview/
+bytedance_doc/
