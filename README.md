@@ -4,10 +4,7 @@
 >
 > 一拍即识 · 智能导购 · 跨平台比价
 >
-> ![Flutter](https://img.shields.io/badge/Flutter-3.24.5-02569B?logo=flutter&logoColor=white)
-> ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.13-009688?logo=python&logoColor=white)
-> ![AI](https://img.shields.io/badge/AI-火山引擎_Doubao-00B4D8?logo=bytedance&logoColor=white)
-> ![Status](https://img.shields.io/badge/Status-可运行-28A745)
+> **技术栈**：Flutter 3.24 · FastAPI + Python 3.13 · 火山引擎 Doubao · 状态：可运行
 
 ---
 
@@ -101,8 +98,33 @@ pip install -r requirements.txt
 
 # 配置环境变量
 cp .env.example .env
-# 编辑 .env，填入火山引擎 API Key
+# 编辑 .env 文件，填入以下必填项：
+```
 
+**`.env` 必填配置**：
+
+| 配置项 | 说明 | 获取方式 |
+|--------|------|---------|
+| `VOLCENGINE_API_KEY` | 火山引擎 API Key | [火山引擎控制台](https://console.volcengine.com) → 密钥管理 |
+| `VOLCENGINE_ENDPOINT` | 模型推理端点 | 默认：`https://ark.cn-beijing.volces.com/api/v3/chat/completions` |
+| `VOLCENGINE_MODEL` | 模型 Endpoint ID | 控制台 → 模型推理 → 创建 Endpoint → 复制 ID |
+
+**`.env` 完整示例**：
+
+```env
+# 火山引擎配置（必填）
+VOLCENGINE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+VOLCENGINE_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3/chat/completions
+VOLCENGINE_MODEL=ep-xxxxxxxxxxxxx
+
+# 数据库配置（可选，默认使用 SQLite）
+DATABASE_URL=sqlite:///./smartprice.db
+
+# 调试模式
+DEBUG=true
+```
+
+```bash
 # 启动服务
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
