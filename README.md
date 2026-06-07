@@ -4,7 +4,10 @@
 >
 > 一拍即识 · 智能导购 · 跨平台比价
 >
-> **技术栈**：Flutter 3.24 · FastAPI + Python 3.13 · 火山引擎 Doubao · 状态：可运行
+> ![Flutter](https://img.shields.io/badge/Flutter-3.24.5-02569B?logo=flutter&logoColor=white)
+> ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.13-009688?logo=python&logoColor=white)
+> ![AI](https://img.shields.io/badge/AI-火山引擎_Doubao-00B4D8?logo=bytedance&logoColor=white)
+> ![Status](https://img.shields.io/badge/Status-可运行-28A745)
 
 ---
 
