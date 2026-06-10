@@ -11,24 +11,24 @@ class Constants {
   // ═══════════════════════════════════════════
   //  API
   // ═══════════════════════════════════════════
-  static const String apiBaseUrl = 'http://10.23.198.80:8000';
+  static const String apiBaseUrl = 'http://10.236.123.80:8000';
 
   // ═══════════════════════════════════════════
   //  主色调 (Primary Palette)
   // ═══════════════════════════════════════════
-  static const Color brandColor = Color(0xFF00B4D8);      // 品牌青
-  static const Color primaryDark = Color(0xFF0077B6);     // 深海蓝（渐变终点）
-  static const Color accentColor = Color(0xFFFF6B6B);     // 促销红（仅价格/折扣）
+  static const Color brandColor = Color(0xFF00B4D8); // 品牌青
+  static const Color primaryDark = Color(0xFF0077B6); // 深海蓝（渐变终点）
+  static const Color accentColor = Color(0xFFFF6B6B); // 促销红（仅价格/折扣）
 
   // ═══════════════════════════════════════════
   //  中性色 (Neutral Palette)
   // ═══════════════════════════════════════════
   static const Color backgroundColor = Color(0xFFF8F9FA); // 页面背景
-  static const Color surfaceColor = Colors.white;          // 卡片背景
+  static const Color surfaceColor = Colors.white; // 卡片背景
   static const Color primaryTextColor = Color(0xFF1A1A2E); // 主文字
   static const Color secondaryTextColor = Color(0xFF6C757D); // 次要文字
-  static const Color tertiaryTextColor = Color(0xFFADB5BD);  // 辅助文字
-  static const Color borderColor = Color(0xFFE9ECEF);       // 边框/分割线
+  static const Color tertiaryTextColor = Color(0xFFADB5BD); // 辅助文字
+  static const Color borderColor = Color(0xFFE9ECEF); // 边框/分割线
 
   // ═══════════════════════════════════════════
   //  功能色 (Functional Colors)
@@ -46,9 +46,9 @@ class Constants {
   // ═══════════════════════════════════════════
   //  圆角体系 (Radius Scale)
   // ═══════════════════════════════════════════
-  static const double radiusSmall = 8.0;   // 标签 chip
+  static const double radiusSmall = 8.0; // 标签 chip
   static const double radiusMedium = 12.0; // 输入框、图标容器
-  static const double radiusLarge = 16.0;  // 标准卡片
+  static const double radiusLarge = 16.0; // 标准卡片
   static const double radiusXLarge = 20.0; // 大卡片、弹窗
 
   // 兼容旧名
@@ -148,9 +148,9 @@ class Constants {
   );
   static const LinearGradient auroraGradient = LinearGradient(
     colors: [
-      Color(0xFF00F5A0),  // 亮绿
-      Color(0xFF00D9F5),  // 青
-      Color(0xFF0077FF),  // 蓝
+      Color(0xFF00F5A0), // 亮绿
+      Color(0xFF00D9F5), // 青
+      Color(0xFF0077FF), // 蓝
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -181,5 +181,4 @@ class Constants {
   static const Curve easeBounce = Curves.bounceOut;
 
   static const Duration staggerDelayFast = Duration(milliseconds: 80);
-
 }
