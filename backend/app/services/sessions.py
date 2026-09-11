@@ -115,7 +115,10 @@ class SessionStore:
             checked = SessionState.model_validate(state.model_dump())
             if checked.workflow is not None and checked.workflow.session_id != session_id:
                 raise SessionError("会话状态不一致，本轮未保存。", "SESSION_CORRUPT", 409)
-            payload = checked.model_dump_json(exclude_none=True).encode("utf-8")
+            # Null is an explicit unknown catalog fact, not an absent field.
+            # Dropping it makes required nullable parameters impossible to reload.
+            payload = checked.model_dump_json().encode("utf-8")
+            SessionState.model_validate_json(payload)
             if len(payload) > MAX_SESSION_BYTES:
                 raise SessionError("会话过长，请新建对话；原历史未删除。", "SESSION_TOO_LARGE", 413)
             self.root.mkdir(parents=True, exist_ok=True)

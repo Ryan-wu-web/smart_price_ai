@@ -39,3 +39,7 @@ Flutter聊天现在显式进入购物工作流，支持确认编辑、证据展�
 ## Phase 4D 遗留样例统一
 
 移除随机报价和伪造价格曲线；旧报告绑定目录证据，详见 [4D记录](04d-sample-unification.md)。
+
+## Phase 4E 会话往返修复
+
+开发集发现并修复显式未知参数被省略导致的多轮失败，见 [4E记录](04e-session-null-roundtrip.md)。
