@@ -97,7 +97,10 @@ class _ResultScreenState extends State<ResultScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChatScreen(initialMessage: text),
+        builder: (_) => ChatScreen(
+          initialMessage: text,
+          initialRecognition: _result,
+        ),
       ),
     );
     _inputController.clear();

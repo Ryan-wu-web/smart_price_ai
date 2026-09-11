@@ -1,6 +1,6 @@
 # API：当前实现与兼容边界
 
-更新：2026-09-11，Phase 1A。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
+更新：2026-09-11，Phase 1A + 1B。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
 本页不是完整升级验收报告，商品与价格仍为本地样例。
 
 ## 已有接口（没有改名）
@@ -15,8 +15,8 @@
 | POST | `/api/v1/filter` | 解析筛选条件 |
 | GET | `/api/v1/trend/{product_id}` | 模拟趋势，非真实历史价格 |
 | POST | `/api/v1/report` | 原有报告生成，尚未实现证据检索 |
-| POST | `/api/v1/chat` | 原有 JSON 对话 |
-| POST | `/api/v1/chat/stream` | 原有 SSE，对话流协议仍待修复 |
+| POST | `/api/v1/chat` | 校验回复并持久化会话的 JSON 对话 |
+| POST | `/api/v1/chat/stream` | 兼容原有 SSE，统一事件协议仍待 Phase 1C |
 
 ## 识别请求与响应
 
@@ -34,7 +34,7 @@
 
 识别图片内容无效：422，`detail` 为中文提示；请求字段 Schema 错误仍使用 FastAPI 422 格式。
 模型读取超时：504；模型 HTTP／连接失败或输出不合格：502。响应仅包含安全提示，不返回上游响应、密钥或堆栈。
-这些模型错误同样在普通 chat/filter/report/suggest 请求中映射；**已发送响应头之后的 SSE 错误事件仍待 Phase 1 后续模块实现**。
+这些模型错误同样在普通 chat/filter/report/suggest 请求中映射；已发送响应头后的已知会话／模型错误通过兼容终态 `done=true,error=中文提示` 返回；统一 error/end 协议仍待 Phase 1C。
 
 `LLMClient.chat_json` 默认首次生成 + 最多 1 次格式／Schema 修复，设置范围为 0–2 次修复。
 支持完整 JSON 对象／数组以及 Markdown JSON 围栏；不使用 eval、不盲目补引号或商品字段。
@@ -59,7 +59,52 @@
 应用启动时创建共享 `httpx.AsyncClient`，通过请求依赖注入给 LLM/VLM，关闭应用时关闭池。
 独立 Python 调用者若自行构造客户端，应使用 `async with LLMClient(...)` 或显式 `await client.aclose()`；借用外部 HTTP 客户端时，借用方不会关闭外部池。
 
+## 对话请求与商品上下文
+
+普通与流式接口共用请求 Schema；已有路径、`message/session_id/current_product` 字段不改名：
+
+```json
+{
+  "message": "预算500元，不要皮革，适合通勤吗？",
+  "current_product": {"name": "识别到的鞋", "category": "运动鞋", "material": "织物"}
+}
+```
+
+- `message`：1–4000 字符，不允许全空白。
+- 首轮可省略 `session_id` 或传 null，由服务生成 UUID；后续携带返回 ID。允许 1–64 位 ASCII 字母、数字、下划线、连字符且首位为字母或数字，拒绝 Windows 保留设备名。空字符串不再当成新会话。
+- `current_product` 为可选 `ChatProduct` 对象；非空时 `name` 必填且去除首尾空格后非空。可选字段含 `id/brand/category/color/material/style/price/platform/rating/tags/image_url/original_price`。
+- 识别商品无需价格／ID；价格缺失与 0 元不同。价格字段须有限、非负数，布尔值或数字字符串不接受；评分 0–5。未知扩展字段忽略，不写入会话。
+- 兼容 Flutter 的 `imageUrl/originalPrice` 输入别名，输出采用下划线命名。可选字段长度／数量限制见 OpenAPI。
+- 未传商品或传 null：继续使用当前会话商品；传新对象：替换商品。本模块未提供“清空商品”操作，可新建会话。
+- 商品上下文来自客户端或识别，尚未经本地知识库核验，不能作为推荐证据。
+
+普通成功响应仍含 `reply/action/action_data/session_id`，新增可选 `current_product`；无商品时普通响应省略该字段，流式终态为 null。
+`reply` 必须为非空字符串，最长 16,000 字符；action 限定 `none/report/trend/filter/compare`，action_data 必须为对象（其各业务子结构尚待后续严格约束）。
+非流式回复和摘要采用有限 Schema 修复；流式最终 JSON 进行 Schema 校验，不合格时本轮不保存，暂不对已显示流内容自动重播。
+模型输出的商品字段不作为会话更新来源；只有明确传入的新商品才会替换上下文。
+
+### 会话错误
+
+| 状态 | 含义与行为 |
+| --- | --- |
+| 422 | 请求字段无效，模型未调用 |
+| 409 | 历史损坏、不支持的版本、危险文件路径或同会话仍忙；原文件保留 |
+| 413 | 会话／上下文达到保护上限；要求新建对话，不删除历史 |
+| 503 | 读取或原子保存失败；原历史不被部分覆盖 |
+| 502/504 | 模型错误／超时；本轮不追加记录 |
+
+在发出 SSE 响应头之前可以发现的坏历史返回 HTTP 409/413/503。
+响应头之后的已知失败示例：
+
+```json
+{"done":true,"error":"回复未能保存，请稍后重试；原历史未修改。","reply":"","action":"none","action_data":{}}
+```
+
+客户端必须先判断 `error`，不能将该终态视为成功回复。新 Flutter 端已处理，并关闭该次流的 HTTP 客户端。
+普通 POST 超时取消自动重试，避免服务端其实已保存但客户端再次发送；尚未实现请求幂等键，手动重试仍可能重复。
+
 ## 尚未解决
 
-会话 ID 路径限制、摘要保留、当前识别商品传递、SSE delta/node/result/error/end 及 Flutter 消费端仍待下一模块。
+SSE 的真正 JSON 字符增量解析、node/result/error/end、统一取消与总时限仍待 Phase 1C；保留旧流解析和逐字延迟，不声称首字性能已优化。
 报告等旧 API 的宽泛字典输入还没有全面收紧；例如空 `best_choice` 会触发旧逻辑错误，本轮未将其改造为新报告流程。
+未实现会话账号授权、跨进程锁或会话管理 API；本地文件存储请使用单进程，勿当作生产级多用户隔离。

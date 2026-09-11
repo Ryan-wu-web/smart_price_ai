@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/chat_message.dart';
 import '../models/product.dart';
+import '../models/recognition_result.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
@@ -10,8 +11,14 @@ import 'report_screen.dart';
 class ChatScreen extends StatefulWidget {
   final String? initialMessage;
   final Product? initialProduct;
+  final RecognitionResult? initialRecognition;
 
-  const ChatScreen({super.key, this.initialMessage, this.initialProduct});
+  const ChatScreen({
+    super.key,
+    this.initialMessage,
+    this.initialProduct,
+    this.initialRecognition,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -23,18 +30,26 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   String? _sessionId;
   bool _isLoading = false;
-  Product? _currentProduct;
+  Map<String, dynamic>? _currentProduct;
 
   @override
   void initState() {
     super.initState();
-    _currentProduct = widget.initialProduct;
+    _currentProduct =
+        widget.initialProduct?.toJson() ?? widget.initialRecognition?.toJson();
     _addWelcomeMessage();
-    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
-      _sendMessage(widget.initialMessage!);
-    }
     if (widget.initialProduct != null) {
       _addProductMessage(widget.initialProduct!);
+    } else if (widget.initialRecognition != null) {
+      _messages.add(ChatMessage(
+        id: 'recognized_product',
+        text: '已带入识别商品：${widget.initialRecognition!.name ?? "待确认商品"}。识别属性可能有误，请确认；图片识别不包含可靠报价。',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+    }
+    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+      _sendMessage(widget.initialMessage!);
     }
   }
 
@@ -48,7 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _addWelcomeMessage() {
     _messages.add(ChatMessage(
       id: 'welcome',
-      text: '你好！我是你的 AI 购物助手。可以帮你比价、找优惠券、分析商品性价比。有什么可以帮你的？',
+      text: '你好！我是你的 AI 购物助手。可以结合识别结果和你的需求讨论选购建议。商品和价格仅为本地样例，不是实时电商报价。',
       isUser: false,
       timestamp: DateTime.now(),
     ));
@@ -57,7 +72,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void _addProductMessage(Product product) {
     _messages.add(ChatMessage(
       id: 'product_${product.id}',
-      text: '已选择商品：${product.name}（¥${product.price.toStringAsFixed(0)}）\n你想了解这款商品的什么信息？',
+      text:
+          '已选择样例商品：${product.name}（样例价 ¥${product.price.toStringAsFixed(0)}）\n你想了解这款商品的什么信息？',
       isUser: false,
       timestamp: DateTime.now(),
       action: 'product_selected',
@@ -67,7 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || _isLoading) return;
 
     setState(() {
       _messages.add(ChatMessage(
@@ -95,7 +111,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await ApiService().sendChatStream(
         text,
         sessionId: _sessionId,
-        currentProduct: _currentProduct?.toJson(),
+        currentProduct: _currentProduct,
         onChunk: (chunk) {
           if (!mounted) return;
           setState(() {
@@ -112,27 +128,11 @@ class _ChatScreenState extends State<ChatScreen> {
               response['sessionId']?.toString();
           if (newSessionId != null) _sessionId = newSessionId;
 
-          // action 兜底
-          String action = response['action']?.toString() ?? 'none';
-          if (action == 'none' && _containsReportKeywords(text)) {
-            action = 'report';
-          }
-
-          // 提取当前商品
-          final currentProductData = response['current_product'] as Map<String, dynamic>?;
-          if (currentProductData != null && currentProductData['name'] != null) {
-            _currentProduct = Product(
-              id: currentProductData['id']?.toString() ?? 'temp',
-              name: currentProductData['name']?.toString() ?? '未知商品',
-              brand: currentProductData['brand']?.toString() ?? '',
-              category: currentProductData['category']?.toString() ?? '',
-              price: (currentProductData['price'] as num?)?.toDouble() ?? 0.0,
-              platform: currentProductData['platform']?.toString() ?? '',
-              rating: (currentProductData['rating'] as num?)?.toDouble() ?? 0.0,
-              tags: (currentProductData['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-              originalPrice: (currentProductData['original_price'] as num?)?.toDouble() ?? 0.0,
-              imageUrl: currentProductData['image_url']?.toString() ?? '',
-            );
+          final action = response['action']?.toString() ?? 'none';
+          final currentProductData = response['current_product'];
+          if (currentProductData is Map<String, dynamic>) {
+            // Recognition-only context has no price/ID; never manufacture either.
+            _currentProduct = Map<String, dynamic>.from(currentProductData);
           }
 
           setState(() {
@@ -166,11 +166,6 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
-  }
-
-  bool _containsReportKeywords(String message) {
-    final keywords = ['对比', '比较', '哪个好', '哪个更好', '推荐', '帮我选', '决策', '报告'];
-    return keywords.any((k) => message.contains(k));
   }
 
   void _scrollToBottom() {
@@ -457,16 +452,25 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           TextButton.icon(
             onPressed: () {
+              final product = _currentProduct;
+              if (product == null ||
+                  product['price'] is! num ||
+                  (product['platform']?.toString().isEmpty ?? true)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('识别结果没有可靠报价，请先选择本地样例商品再生成价格相关报告。'),
+                ));
+                return;
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ReportScreen(
-                    productName: _currentProduct?.name ?? '当前商品',
-                    bestChoice: _currentProduct != null ? {
-                      'name': _currentProduct!.name,
-                      'platform': _currentProduct!.platform,
-                      'price': _currentProduct!.price,
-                    } : null,
+                    productName: product['name'] as String,
+                    bestChoice: {
+                      'name': product['name'],
+                      'platform': product['platform'],
+                      'price': product['price'],
+                    },
                   ),
                 ),
               );

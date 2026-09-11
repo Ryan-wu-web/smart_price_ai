@@ -60,7 +60,7 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 | 智能导购 | 多轮对话 + 意图识别 | 决策卡片（对比/指南/报告）|
 | 决策报告 | 上下文聚合 + 结构化生成 | 最优选择 + 购买建议 |
 
-Phase 1A 已为识别输出接入 Pydantic Schema，通用 JSON 解析支持有限修复并保留对象／数组兼容性。对话和其他业务专用 Schema、摘要修复及统一 SSE 异常事件仍待后续模块实施。
+Phase 1A 已完成识别 Schema、缓存隔离和共享 HTTP；Phase 1B 已为对话输入、回复、摘要和商品上下文增加 Schema，修复摘要丢历史并原子保存会话。统一 SSE 事件和其他业务专用 Schema 仍待后续模块实施。
 
 ---
 
@@ -68,7 +68,7 @@ Phase 1A 已为识别输出接入 Pydantic Schema，通用 JSON 解析支持有�
 
 ![系统架构图](assets/system-architecture.png)
 
-> 当前实现边界见 [架构说明](docs/architecture.md)、[API 说明](docs/api.md) 和 [Phase 1A 交付记录](docs/modules/01a-recognition-foundation.md)。
+> 当前实现边界见 [架构说明](docs/architecture.md)、[API 说明](docs/api.md) 和 [模块交付索引](docs/modules/README.md)。
 
 ---
 
@@ -131,7 +131,7 @@ DEBUG=true
 ```
 
 ```bash
-# 启动服务
+# 本地会话使用进程内锁，请保持单进程，不添加 --workers
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -140,7 +140,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 本地基础功能不要求 Redis 或 PostgreSQL 已启动；当前它们未进入主链路。
 没有模型配置时 `/health` 和本地样例商品接口可用，但真实识别／对话不可用。
 连接池及 JSON 修复参数见 `backend/.env.example` 和 [API 说明](docs/api.md)。
-本轮只验证了隔离 ASGI 接口与离线模型桩，没有执行真实模型、真机或 Docker 构建。
+已验证隔离 ASGI 接口、离线模型桩，以及本地 Uvicorn 启动／健康接口／OpenAPI；没有执行真实模型、真机或 Docker 构建。
+
+会话文件位于从 `backend` 启动时的 `data/sessions`。请保留该目录且仅运行一个后端进程；本模块兼容旧历史数组，成功回复后自动写入版本 2，坏文件保留并报错。回退旧代码前须备份该目录，新格式不能直接交给旧版本读取。会话 ID 并非登录凭证，目前没有账号级隔离，不宜直接向公网开放。
 
 ### 3. 启动前端（真机调试）
 
@@ -163,7 +165,8 @@ flutter run
 
 1. **拍照识物**：首页 → 拍照识物 → 拍摄商品 → 查看识别结果 → 查看比价 → 价格走势 → AI 导购
 2. **多目标识别**：首页 → 多目标识别 → 拍摄多个商品 → 点击气泡标签 → 查看单个商品详情
-3. **AI 聊天**：首页 → 底部「聊天」→ 发送 "帮我选一双运动鞋" → 观察决策卡片 → 生成报告
+3. **识别后追问**：识别详情修正属性 → 输入问题 → 聊天显示已带入商品 → 再追问材质／预算；没有价格不会显示为 0 元。
+4. **AI 聊天／报告**：首页 → 聊天 → 补充品类、预算和用途；仅在已有样例商品价格／平台时生成价格相关报告。当前尚非证据推荐链路。
 
 ---
 
@@ -174,6 +177,7 @@ flutter run
 | [`docs/modules/README.md`](docs/modules/README.md) | 模块交付记录索引与记录规范 |
 | [`docs/modules/00-cleanup.md`](docs/modules/00-cleanup.md) | 升级前清理范围、验证、回退与后续边界 |
 | [`docs/modules/01a-recognition-foundation.md`](docs/modules/01a-recognition-foundation.md) | Phase 1A 实际改动、离线结果与复现方式 |
+| [`docs/modules/01b-conversation-context.md`](docs/modules/01b-conversation-context.md) | Phase 1B 会话、摘要、识别上下文与实际验证 |
 | [`docs/api.md`](docs/api.md) | 现有接口、识别字段及错误约定 |
 | [`docs/architecture.md`](docs/architecture.md) | 当前运行链路与尚未完成的架构部分 |
 

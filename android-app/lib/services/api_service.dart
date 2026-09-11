@@ -246,29 +246,37 @@ class ApiService {
       body['current_product'] = currentProduct;
     }
 
-    // 聊天接口：60秒超时 + 1次重试
-    for (var attempt = 1; attempt <= 2; attempt++) {
-      try {
-        final response = await http.post(
-          Uri.parse('$_baseUrl/api/v1/chat'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 60));
-
-        if (response.statusCode == 200) {
-          return jsonDecode(response.body) as Map<String, dynamic>;
-        } else {
-          throw ApiException('发送消息失败: ${response.statusCode}');
-        }
-      } on TimeoutException catch (_) {
-        if (attempt == 2) {
-          throw ApiException(ErrorMessages.timeout);
-        }
-        // 重试前等待 1 秒
-        await Future.delayed(const Duration(seconds: 1));
+    // A timeout does not prove the server failed to save the turn. Do not replay POSTs.
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/v1/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 60));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
       }
+      throw ApiException(_chatError(response.statusCode));
+    } on TimeoutException {
+      throw ApiException('等待回复超时，请稍后查看或手动重试；不会自动重复发送。');
     }
-    return null;
+  }
+
+  static String _chatError(int statusCode) {
+    switch (statusCode) {
+      case 409:
+        return '会话正在处理或历史无法读取，请稍后重试；仍失败可新建对话，原历史会保留。';
+      case 413:
+        return '会话过长，请新建对话并带上关键需求。原历史未删除。';
+      case 422:
+        return '消息、商品信息或会话格式无效，请检查后重试。';
+      case 504:
+        return '模型回复超时，请稍后重试。';
+      default:
+        return '暂时无法完成对话，请稍后重试。';
+    }
   }
 
   /// SSE 流式聊天：逐字返回 AI 回复
@@ -289,6 +297,7 @@ class ApiService {
     if (sessionId != null) body['session_id'] = sessionId;
     if (currentProduct != null) body['current_product'] = currentProduct;
 
+    final client = http.Client();
     try {
       final request = http.Request(
         'POST',
@@ -297,7 +306,7 @@ class ApiService {
         ..headers['Content-Type'] = 'application/json'
         ..body = jsonEncode(body);
 
-      final streamedResponse = await http.Client().send(request);
+      final streamedResponse = await client.send(request);
 
       if (streamedResponse.statusCode == 200) {
         await for (final line in streamedResponse.stream
@@ -307,19 +316,26 @@ class ApiService {
             final data = line.substring(6);
             final jsonData = jsonDecode(data) as Map<String, dynamic>;
             if (jsonData['done'] == true) {
-              onDone(jsonData);
+              if (jsonData['error'] is String) {
+                onError(jsonData['error'] as String);
+              } else {
+                onDone(jsonData);
+              }
+              return;
             } else {
               onChunk(jsonData['reply']?.toString() ?? '');
             }
           }
         }
       } else {
-        onError('发送消息失败: ${streamedResponse.statusCode}');
+        onError(_chatError(streamedResponse.statusCode));
       }
     } on TimeoutException catch (_) {
       onError(ErrorMessages.timeout);
     } catch (e) {
-      onError('发送消息失败: $e');
+      onError('连接中断，暂时无法完成对话，请稍后重试。');
+    } finally {
+      client.close();
     }
   }
 }

@@ -1,8 +1,9 @@
 from datetime import datetime
 import math
-from typing import Any, Optional
+import re
+from typing import Annotated, Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 
 class RecognizeRequest(BaseModel):
@@ -91,17 +92,74 @@ class ReportResponse(BaseModel):
     recommendation: str
 
 
+def validate_session_id(value: str) -> str:
+    # Keep existing safe IDs, but disallow Windows device names and path syntax.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", value):
+        raise ValueError("会话 ID 格式无效，请重新开始对话。")
+    if re.fullmatch(r"(?i:con|prn|aux|nul|com[1-9]|lpt[1-9])", value):
+        raise ValueError("会话 ID 格式无效，请重新开始对话。")
+    return value
+
+
+SessionId = Annotated[str, Field(strict=True, min_length=1, max_length=64), AfterValidator(validate_session_id)]
+
+
+class ChatProduct(BaseModel):
+    """Client-selected/recognized context, not a verified catalog record."""
+    model_config = ConfigDict(str_strip_whitespace=True, populate_by_name=True)
+
+    name: str = Field(min_length=1, max_length=200)
+    id: str | None = Field(default=None, max_length=200)
+    brand: str | None = Field(default=None, max_length=200)
+    category: str | None = Field(default=None, max_length=200)
+    color: str | None = Field(default=None, max_length=200)
+    material: str | None = Field(default=None, max_length=200)
+    style: str | None = Field(default=None, max_length=200)
+    price: float | None = Field(default=None, ge=0, allow_inf_nan=False, strict=True)
+    platform: str | None = Field(default=None, max_length=200)
+    rating: float | None = Field(default=None, ge=0, le=5, allow_inf_nan=False, strict=True)
+    tags: list[Annotated[str, Field(max_length=100)]] | None = Field(default=None, max_length=30)
+    image_url: str | None = Field(default=None, max_length=2000, alias="imageUrl")
+    original_price: float | None = Field(default=None, ge=0, allow_inf_nan=False, strict=True, alias="originalPrice")
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
-    session_id: Optional[str] = None
-    current_product: Optional[dict[str, Any]] = None
+    session_id: SessionId | None = None
+    current_product: ChatProduct | None = None
+
+    @model_validator(mode="after")
+    def nonblank_message(self):
+        if not self.message.strip():
+            raise ValueError("请输入消息内容。")
+        return self
 
 
-class ChatResponse(BaseModel):
-    reply: str
-    action: str = Field(default="none")
+class ChatModelResult(BaseModel):
+    reply: str = Field(min_length=1, max_length=16000)
+    action: Literal["none", "report", "trend", "filter", "compare"] = "none"
     action_data: dict[str, Any] = Field(default_factory=dict)
-    session_id: str
+
+    @model_validator(mode="after")
+    def nonblank_reply(self):
+        if not self.reply.strip():
+            raise ValueError("reply must not be blank")
+        return self
+
+
+class ChatSummary(BaseModel):
+    summary: str = Field(min_length=1, max_length=6000)
+
+    @model_validator(mode="after")
+    def nonblank_summary(self):
+        if not self.summary.strip():
+            raise ValueError("summary must not be blank")
+        return self
+
+
+class ChatResponse(ChatModelResult):
+    session_id: SessionId
+    current_product: ChatProduct | None = None
 
 
 class ImageCenter(BaseModel):
