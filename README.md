@@ -15,9 +15,11 @@
 
 **Smart Price** 是一款面向 C 端消费者的 **AI 拍照识物购物助手**。
 
-用户通过 App 内相机拍摄商品照片，服务端利用**大模型视觉能力**（VLM）完成商品类目与关键属性（品牌、颜色、款式等）识别，并**动态生成**下一步决策建议卡片。用户点击建议卡片后，系统跨平台匹配相似商品并输出推荐列表；同时支持用户通过**自然语言**追加筛选条件，AI 购物助手实时响应，辅助用户高效完成购买决策。
+用户通过 App 内相机拍摄商品照片，服务端利用**大模型视觉能力**（VLM）完成商品类目与关键属性（品牌、颜色、款式等）识别，并**动态生成**下一步决策建议卡片。用户点击建议卡片后，系统从本地样例数据匹配相似商品并输出模拟平台推荐列表；同时支持用户通过**自然语言**追加筛选条件，AI 购物助手实时响应，辅助用户高效完成购买决策。
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
+
+> **当前状态（2026-09-11）**：已完成升级前代码整理，尚未实施 Phase 1–5。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。本文功能说明不是本轮真机／模型验证结果；升级目标和历史性能描述不能作为实测指标。
 
 ---
 
@@ -43,9 +45,9 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 
 针对"同一商品重新拍照"场景，采用 **dHash 差值感知哈希**替代 MD5，配合图片压缩预处理，实现：
 
-- **首次识别**：~8-10 秒（VLM 调用）
-- **二次识别（缓存命中）**：**< 0.1 秒**
-- 连接池复用 + 图片压缩（600px / JPEG 75%），传输体积减少 30-40%
+- 缓存命中时可跳过视觉模型请求，具体耗时需在固定环境下测量
+- 图片压缩（600px / JPEG 75%）用于降低上传体积
+- 单／多目标缓存隔离和应用级 HTTP 连接池生命周期将在 Phase 1 修复
 
 ### 4️⃣ 完整的 AI 任务编排体系
 
@@ -57,7 +59,7 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 | 智能导购 | 多轮对话 + 意图识别 | 决策卡片（对比/指南/报告）|
 | 决策报告 | 上下文聚合 + 结构化生成 | 最优选择 + 购买建议 |
 
-Prompt 设计具备良好鲁棒性，通过 JSON Schema 约束 + 容错回退机制，确保稳定输出结构化数据。
+现有 Prompt 要求模型返回 JSON，并有部分容错回退；严格输出 Schema 校验、有限重试与统一异常事件尚待 Phase 1 实施。
 
 ---
 
@@ -65,7 +67,7 @@ Prompt 设计具备良好鲁棒性，通过 JSON Schema 约束 + 容错回退机
 
 ![系统架构图](assets/system-architecture.png)
 
-> 架构说明详见 [`docs/architecture.md`](docs/architecture.md)
+> 当前审计与整理记录见 [`docs/modules/00-cleanup.md`](docs/modules/00-cleanup.md)；独立架构文档将在升级阶段补齐。
 
 ---
 
@@ -120,7 +122,7 @@ VOLCENGINE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 VOLCENGINE_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3/chat/completions
 VOLCENGINE_MODEL=ep-xxxxxxxxxxxxx
 
-# 数据库配置（可选，默认使用 SQLite）
+# 数据库配置（可选；当前主流程未接入数据库）
 DATABASE_URL=sqlite:///./smartprice.db
 
 # 调试模式
@@ -163,11 +165,8 @@ flutter run
 
 | 文档 | 说明 |
 |------|------|
-| [`docs/architecture.md`](docs/architecture.md) | 系统架构设计文档（架构图 + 数据流 + 模块边界）|
-| [`docs/api.md`](docs/api.md) | API 接口说明文档（RESTful API 详细定义）|
-| [`docs/mock-data.md`](docs/mock-data.md) | 商品模拟数据说明（使用模拟数据的原因与格式）|
-| [`docs/ai-summary.md`](docs/ai-summary.md) | AI 使用总结文档（Prompt 工程 + AI Coding 实践）|
-| [`docs/test/2025-06-05-full-test-plan.md`](docs/test/2025-06-05-full-test-plan.md) | 全功能测试流程与报告 |
+| [`docs/modules/README.md`](docs/modules/README.md) | 模块交付记录索引与记录规范 |
+| [`docs/modules/00-cleanup.md`](docs/modules/00-cleanup.md) | 升级前清理范围、验证、回退与后续边界 |
 
 ---
 
@@ -187,8 +186,8 @@ flutter run
 | 技术 | 用途 |
 |------|------|
 | FastAPI | RESTful API 框架 |
-| SQLite | 识别结果缓存与历史记录 |
-| httpx | 异步 HTTP 客户端（连接池复用）|
+| 内存／本地 JSON 文件 | 当前识别缓存与会话存储；SQLAlchemy 数据模型尚未接入主流程 |
+| httpx | 异步 HTTP 请求；应用级客户端复用与关闭待完善 |
 | Pillow | 图片压缩与 dHash 感知哈希计算 |
 | 火山引擎 Doubao | VLM 图像识别 + LLM 对话生成 |
 
@@ -202,7 +201,7 @@ flutter run
 
 **Q2：拍照后识别超时？**
 
-首次识别需要调用 VLM API（约 8-10 秒），请确保火山引擎 API Key 有效且余额充足。同一商品二次拍照会命中缓存（< 0.1 秒）。
+首次识别需要调用 VLM API，请确保模型配置有效。响应时间取决于网络、模型和输入图片；相似图片可能命中缓存，但不保证二次拍照必然命中。
 
 **Q3：Flutter 编译报错？**
 
