@@ -1,0 +1,1190 @@
+{
+  "schema_version": 1,
+  "dataset_id": "smart-price-synthetic-v1",
+  "revision": "2026-09-11.1",
+  "notice": "本地虚构样例商品与价格，仅用于功能演示和工程评测，不代表真实商品参数、在售报价或历史价格。",
+  "sources": [
+    {
+      "source_id": "src-local-synthetic-v1",
+      "kind": "local_synthetic",
+      "title": "Smart Price AI 本地虚构商品设定集 v1",
+      "description": "为演示检索、约束和证据引用而编写的虚构样例；品牌、型号、参数、优缺点和人民币价格均为工程设定，不来自电商、厂商或真实价格历史。"
+    }
+  ],
+  "products": [
+    {
+      "product_id": "sample-shoe-01",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-shoe-01",
+      "data_kind": "sample",
+      "name": "样例行远 Walk-01（虚构样例）",
+      "category": "运动鞋",
+      "brand": "样例行远",
+      "model": "Walk-01",
+      "parameters": {
+        "weight_g": {
+          "label": "单只重量（样例42码）",
+          "value": 220,
+          "unit": "g"
+        },
+        "material": {
+          "label": "鞋面材质",
+          "value": "网布",
+          "unit": null
+        },
+        "fit": {
+          "label": "鞋楦",
+          "value": "常规",
+          "unit": null
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        },
+        "color": {
+          "label": "颜色",
+          "value": "黑色",
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 299,
+        "max": 349,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "日常通勤",
+        "散步"
+      ],
+      "advantages": [
+        "重量较低，适合短途步行",
+        "网布鞋面便于透气"
+      ],
+      "disadvantages": [
+        "不防水",
+        "不适合复杂山路"
+      ],
+      "exclusions": [
+        "雨天需要防水",
+        "越野跑"
+      ],
+      "buying_advice": [
+        "优先通勤和透气可关注本款",
+        "购买鞋类前仍需试穿确认尺码"
+      ]
+    },
+    {
+      "product_id": "sample-shoe-02",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-shoe-02",
+      "data_kind": "sample",
+      "name": "样例行远 Run-02（虚构样例）",
+      "category": "运动鞋",
+      "brand": "样例行远",
+      "model": "Run-02",
+      "parameters": {
+        "weight_g": {
+          "label": "单只重量（样例42码）",
+          "value": 265,
+          "unit": "g"
+        },
+        "material": {
+          "label": "鞋面材质",
+          "value": "工程网布",
+          "unit": null
+        },
+        "fit": {
+          "label": "鞋楦",
+          "value": "常规",
+          "unit": null
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        },
+        "color": {
+          "label": "颜色",
+          "value": "灰色",
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 499,
+        "max": 599,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "慢跑",
+        "日常通勤"
+      ],
+      "advantages": [
+        "偏重缓震用途",
+        "适合规律慢跑场景"
+      ],
+      "disadvantages": [
+        "重量高于Walk-01",
+        "没有防水设计"
+      ],
+      "exclusions": [
+        "雨天需要防水",
+        "追求极轻重量"
+      ],
+      "buying_advice": [
+        "在缓震与重量之间权衡",
+        "本样例不能证明真实运动防护效果"
+      ]
+    },
+    {
+      "product_id": "sample-shoe-03",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-shoe-03",
+      "data_kind": "sample",
+      "name": "样例轻步 Lite-01（虚构样例）",
+      "category": "运动鞋",
+      "brand": "样例轻步",
+      "model": "Lite-01",
+      "parameters": {
+        "weight_g": {
+          "label": "单只重量（样例42码）",
+          "value": 190,
+          "unit": "g"
+        },
+        "material": {
+          "label": "鞋面材质",
+          "value": "针织",
+          "unit": null
+        },
+        "fit": {
+          "label": "鞋楦",
+          "value": "偏窄",
+          "unit": null
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        },
+        "color": {
+          "label": "颜色",
+          "value": "白色",
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 399,
+        "max": 459,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "散步",
+        "旅行"
+      ],
+      "advantages": [
+        "样例鞋款中重量较低",
+        "适合轻装出行"
+      ],
+      "disadvantages": [
+        "鞋楦偏窄",
+        "不防水"
+      ],
+      "exclusions": [
+        "宽脚",
+        "雨天需要防水"
+      ],
+      "buying_advice": [
+        "宽脚用户不宜仅因重量低而选择",
+        "优先核对鞋楦与试穿感受"
+      ]
+    },
+    {
+      "product_id": "sample-shoe-04",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-shoe-04",
+      "data_kind": "sample",
+      "name": "样例轻步 Rain-02（虚构样例）",
+      "category": "运动鞋",
+      "brand": "样例轻步",
+      "model": "Rain-02",
+      "parameters": {
+        "weight_g": {
+          "label": "单只重量（样例42码）",
+          "value": 310,
+          "unit": "g"
+        },
+        "material": {
+          "label": "鞋面材质",
+          "value": "合成面料",
+          "unit": null
+        },
+        "fit": {
+          "label": "鞋楦",
+          "value": "常规",
+          "unit": null
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": true,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        },
+        "color": {
+          "label": "颜色",
+          "value": "黑色",
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 699,
+        "max": 799,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "雨天通勤",
+        "散步"
+      ],
+      "advantages": [
+        "提供样例防水设计",
+        "适合雨天通勤需求"
+      ],
+      "disadvantages": [
+        "重量偏高",
+        "透气性不如网布款"
+      ],
+      "exclusions": [
+        "追求极轻重量",
+        "高强度跑步"
+      ],
+      "buying_advice": [
+        "仅防水设计不能推断具体防水等级",
+        "雨天需求与重量需要共同考虑"
+      ]
+    },
+    {
+      "product_id": "sample-shoe-05",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-shoe-05",
+      "data_kind": "sample",
+      "name": "样例衡途 Wide-01（虚构样例）",
+      "category": "运动鞋",
+      "brand": "样例衡途",
+      "model": "Wide-01",
+      "parameters": {
+        "weight_g": {
+          "label": "单只重量（样例42码）",
+          "value": 280,
+          "unit": "g"
+        },
+        "material": {
+          "label": "鞋面材质",
+          "value": "网布",
+          "unit": null
+        },
+        "fit": {
+          "label": "鞋楦",
+          "value": "宽楦",
+          "unit": null
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        },
+        "color": {
+          "label": "颜色",
+          "value": "灰色",
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 459,
+        "max": 529,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "日常通勤",
+        "长时间站立"
+      ],
+      "advantages": [
+        "宽楦设计",
+        "适合关注前掌空间的场景"
+      ],
+      "disadvantages": [
+        "不防水",
+        "不适合追求窄楦包裹"
+      ],
+      "exclusions": [
+        "雨天需要防水",
+        "偏好窄楦"
+      ],
+      "buying_advice": [
+        "优先确认实际脚宽",
+        "长时间站立是否舒适仍需试穿"
+      ]
+    },
+    {
+      "product_id": "sample-shoe-06",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-shoe-06",
+      "data_kind": "sample",
+      "name": "样例衡途 Trail-02（虚构样例）",
+      "category": "运动鞋",
+      "brand": "样例衡途",
+      "model": "Trail-02",
+      "parameters": {
+        "weight_g": {
+          "label": "单只重量（样例42码）",
+          "value": 340,
+          "unit": "g"
+        },
+        "material": {
+          "label": "鞋面材质",
+          "value": "合成面料",
+          "unit": null
+        },
+        "fit": {
+          "label": "鞋楦",
+          "value": "常规",
+          "unit": null
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": true,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        },
+        "color": {
+          "label": "颜色",
+          "value": "棕色",
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 899,
+        "max": 999,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "户外徒步",
+        "雨天出行"
+      ],
+      "advantages": [
+        "偏重户外用途",
+        "样例防水设计"
+      ],
+      "disadvantages": [
+        "价格区间较高",
+        "重量为本样例鞋款中最高"
+      ],
+      "exclusions": [
+        "预算低于899元",
+        "追求极轻重量"
+      ],
+      "buying_advice": [
+        "城市短途通勤不一定需要户外配置",
+        "不把本样例当作专业安全装备评估"
+      ]
+    },
+    {
+      "product_id": "sample-audio-01",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-audio-01",
+      "data_kind": "sample",
+      "name": "样例听岚 Quiet-01（虚构样例）",
+      "category": "耳机",
+      "brand": "样例听岚",
+      "model": "Quiet-01",
+      "parameters": {
+        "anc": {
+          "label": "主动降噪",
+          "value": true,
+          "unit": null
+        },
+        "form_factor": {
+          "label": "佩戴形式",
+          "value": "入耳式",
+          "unit": null
+        },
+        "battery_hours": {
+          "label": "单次续航（样例标称）",
+          "value": 8,
+          "unit": "h"
+        },
+        "multipoint": {
+          "label": "多设备连接",
+          "value": true,
+          "unit": null
+        },
+        "low_latency_mode": {
+          "label": "低延迟模式",
+          "value": false,
+          "unit": null
+        },
+        "earbud_weight_g": {
+          "label": "单耳重量",
+          "value": 5.0,
+          "unit": "g"
+        }
+      },
+      "price_range": {
+        "min": 399,
+        "max": 499,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "通勤",
+        "办公室"
+      ],
+      "advantages": [
+        "支持主动降噪",
+        "支持多设备连接"
+      ],
+      "disadvantages": [
+        "入耳佩戴可能不适合所有人",
+        "单次续航低于Quiet-02"
+      ],
+      "exclusions": [
+        "排斥入耳式"
+      ],
+      "buying_advice": [
+        "优先确认佩戴接受度",
+        "降噪效果不能由支持降噪这一字段推断"
+      ]
+    },
+    {
+      "product_id": "sample-audio-02",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-audio-02",
+      "data_kind": "sample",
+      "name": "样例听岚 Quiet-02（虚构样例）",
+      "category": "耳机",
+      "brand": "样例听岚",
+      "model": "Quiet-02",
+      "parameters": {
+        "anc": {
+          "label": "主动降噪",
+          "value": true,
+          "unit": null
+        },
+        "form_factor": {
+          "label": "佩戴形式",
+          "value": "头戴式",
+          "unit": null
+        },
+        "battery_hours": {
+          "label": "单次续航（样例标称）",
+          "value": 40,
+          "unit": "h"
+        },
+        "multipoint": {
+          "label": "多设备连接",
+          "value": true,
+          "unit": null
+        },
+        "low_latency_mode": {
+          "label": "低延迟模式",
+          "value": false,
+          "unit": null
+        },
+        "device_weight_g": {
+          "label": "整机重量",
+          "value": 250.0,
+          "unit": "g"
+        }
+      },
+      "price_range": {
+        "min": 799,
+        "max": 899,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "办公室",
+        "居家"
+      ],
+      "advantages": [
+        "单次续航较长",
+        "支持多设备连接"
+      ],
+      "disadvantages": [
+        "体积和重量较大",
+        "不适合运动佩戴"
+      ],
+      "exclusions": [
+        "运动使用",
+        "追求便携"
+      ],
+      "buying_advice": [
+        "长时间使用需考虑头戴压迫感",
+        "不要将样例续航视为真实测量"
+      ]
+    },
+    {
+      "product_id": "sample-audio-03",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-audio-03",
+      "data_kind": "sample",
+      "name": "样例声途 Open-01（虚构样例）",
+      "category": "耳机",
+      "brand": "样例声途",
+      "model": "Open-01",
+      "parameters": {
+        "anc": {
+          "label": "主动降噪",
+          "value": false,
+          "unit": null
+        },
+        "form_factor": {
+          "label": "佩戴形式",
+          "value": "开放式",
+          "unit": null
+        },
+        "battery_hours": {
+          "label": "单次续航（样例标称）",
+          "value": 10,
+          "unit": "h"
+        },
+        "multipoint": {
+          "label": "多设备连接",
+          "value": false,
+          "unit": null
+        },
+        "low_latency_mode": {
+          "label": "低延迟模式",
+          "value": false,
+          "unit": null
+        },
+        "earbud_weight_g": {
+          "label": "单耳重量",
+          "value": 9.0,
+          "unit": "g"
+        }
+      },
+      "price_range": {
+        "min": 299,
+        "max": 359,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "散步",
+        "轻运动"
+      ],
+      "advantages": [
+        "开放式佩戴",
+        "可兼顾对周边声音的感知"
+      ],
+      "disadvantages": [
+        "没有主动降噪",
+        "不支持多设备连接"
+      ],
+      "exclusions": [
+        "必须主动降噪",
+        "要求强隔音"
+      ],
+      "buying_advice": [
+        "嘈杂场景不宜只看佩戴形式",
+        "环境感知不构成交通安全保证"
+      ]
+    },
+    {
+      "product_id": "sample-audio-04",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-audio-04",
+      "data_kind": "sample",
+      "name": "样例声途 Game-02（虚构样例）",
+      "category": "耳机",
+      "brand": "样例声途",
+      "model": "Game-02",
+      "parameters": {
+        "anc": {
+          "label": "主动降噪",
+          "value": true,
+          "unit": null
+        },
+        "form_factor": {
+          "label": "佩戴形式",
+          "value": "入耳式",
+          "unit": null
+        },
+        "battery_hours": {
+          "label": "单次续航（样例标称）",
+          "value": 6,
+          "unit": "h"
+        },
+        "multipoint": {
+          "label": "多设备连接",
+          "value": false,
+          "unit": null
+        },
+        "low_latency_mode": {
+          "label": "低延迟模式",
+          "value": true,
+          "unit": null
+        },
+        "earbud_weight_g": {
+          "label": "单耳重量",
+          "value": 6.0,
+          "unit": "g"
+        }
+      },
+      "price_range": {
+        "min": 599,
+        "max": 699,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "游戏",
+        "通勤"
+      ],
+      "advantages": [
+        "提供低延迟模式",
+        "支持主动降噪"
+      ],
+      "disadvantages": [
+        "单次续航相对短",
+        "不支持多设备连接"
+      ],
+      "exclusions": [
+        "排斥入耳式",
+        "必须多设备连接"
+      ],
+      "buying_advice": [
+        "低延迟模式不等于已知具体延迟毫秒数",
+        "游戏使用需实际验证设备兼容性"
+      ]
+    },
+    {
+      "product_id": "sample-audio-05",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-audio-05",
+      "data_kind": "sample",
+      "name": "样例简声 Basic-01（虚构样例）",
+      "category": "耳机",
+      "brand": "样例简声",
+      "model": "Basic-01",
+      "parameters": {
+        "anc": {
+          "label": "主动降噪",
+          "value": false,
+          "unit": null
+        },
+        "form_factor": {
+          "label": "佩戴形式",
+          "value": "半入耳式",
+          "unit": null
+        },
+        "battery_hours": {
+          "label": "单次续航（样例标称）",
+          "value": 5,
+          "unit": "h"
+        },
+        "multipoint": {
+          "label": "多设备连接",
+          "value": false,
+          "unit": null
+        },
+        "low_latency_mode": {
+          "label": "低延迟模式",
+          "value": false,
+          "unit": null
+        },
+        "earbud_weight_g": {
+          "label": "单耳重量",
+          "value": 4.0,
+          "unit": "g"
+        }
+      },
+      "price_range": {
+        "min": 129,
+        "max": 169,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "日常听音",
+        "短途通勤"
+      ],
+      "advantages": [
+        "样例价格区间较低",
+        "单耳重量较低"
+      ],
+      "disadvantages": [
+        "无主动降噪",
+        "续航较短"
+      ],
+      "exclusions": [
+        "必须主动降噪",
+        "单次续航超过5小时"
+      ],
+      "buying_advice": [
+        "低预算可先考虑基本使用需求",
+        "不要由价格推断音质优劣"
+      ]
+    },
+    {
+      "product_id": "sample-audio-06",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-audio-06",
+      "data_kind": "sample",
+      "name": "样例简声 Flex-02（虚构样例）",
+      "category": "耳机",
+      "brand": "样例简声",
+      "model": "Flex-02",
+      "parameters": {
+        "anc": {
+          "label": "主动降噪",
+          "value": null,
+          "unit": null
+        },
+        "form_factor": {
+          "label": "佩戴形式",
+          "value": "开放式",
+          "unit": null
+        },
+        "battery_hours": {
+          "label": "单次续航（样例标称）",
+          "value": 12,
+          "unit": "h"
+        },
+        "multipoint": {
+          "label": "多设备连接",
+          "value": true,
+          "unit": null
+        },
+        "low_latency_mode": {
+          "label": "低延迟模式",
+          "value": false,
+          "unit": null
+        },
+        "earbud_weight_g": {
+          "label": "单耳重量",
+          "value": 8.0,
+          "unit": "g"
+        }
+      },
+      "price_range": {
+        "min": 499,
+        "max": 569,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "办公室",
+        "散步"
+      ],
+      "advantages": [
+        "开放式设计",
+        "支持多设备连接"
+      ],
+      "disadvantages": [
+        "主动降噪信息未提供",
+        "开放式隔音有限"
+      ],
+      "exclusions": [
+        "必须确认主动降噪",
+        "要求强隔音"
+      ],
+      "buying_advice": [
+        "缺失降噪参数必须说明未知",
+        "不能为了满足条件将未知字段解释为支持"
+      ]
+    },
+    {
+      "product_id": "sample-bag-01",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-bag-01",
+      "data_kind": "sample",
+      "name": "样例行囊 City-01（虚构样例）",
+      "category": "双肩包",
+      "brand": "样例行囊",
+      "model": "City-01",
+      "parameters": {
+        "capacity_l": {
+          "label": "容量",
+          "value": 18,
+          "unit": "L"
+        },
+        "weight_g": {
+          "label": "空包重量",
+          "value": 450,
+          "unit": "g"
+        },
+        "laptop_inches": {
+          "label": "电脑隔层标称尺寸",
+          "value": 14,
+          "unit": "inch"
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 199,
+        "max": 249,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "日常通勤",
+        "短途出行"
+      ],
+      "advantages": [
+        "自重较低",
+        "提供14英寸样例电脑隔层"
+      ],
+      "disadvantages": [
+        "容量较小",
+        "没有防水设计"
+      ],
+      "exclusions": [
+        "携带16英寸电脑",
+        "多日旅行"
+      ],
+      "buying_advice": [
+        "先核对电脑实际尺寸",
+        "英寸标记不等于所有同尺寸电脑都能装入"
+      ]
+    },
+    {
+      "product_id": "sample-bag-02",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-bag-02",
+      "data_kind": "sample",
+      "name": "样例行囊 Work-02（虚构样例）",
+      "category": "双肩包",
+      "brand": "样例行囊",
+      "model": "Work-02",
+      "parameters": {
+        "capacity_l": {
+          "label": "容量",
+          "value": 24,
+          "unit": "L"
+        },
+        "weight_g": {
+          "label": "空包重量",
+          "value": 850,
+          "unit": "g"
+        },
+        "laptop_inches": {
+          "label": "电脑隔层标称尺寸",
+          "value": 16,
+          "unit": "inch"
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": true,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 399,
+        "max": 459,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "商务通勤",
+        "短途出差"
+      ],
+      "advantages": [
+        "提供16英寸样例电脑隔层",
+        "样例防水设计"
+      ],
+      "disadvantages": [
+        "自重偏高",
+        "价格高于City-01"
+      ],
+      "exclusions": [
+        "追求低于500g自重"
+      ],
+      "buying_advice": [
+        "在容量和自重之间取舍",
+        "防水设计不能推断浸水保护能力"
+      ]
+    },
+    {
+      "product_id": "sample-bag-03",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-bag-03",
+      "data_kind": "sample",
+      "name": "样例轻装 Day-01（虚构样例）",
+      "category": "双肩包",
+      "brand": "样例轻装",
+      "model": "Day-01",
+      "parameters": {
+        "capacity_l": {
+          "label": "容量",
+          "value": 15,
+          "unit": "L"
+        },
+        "weight_g": {
+          "label": "空包重量",
+          "value": 300,
+          "unit": "g"
+        },
+        "laptop_inches": {
+          "label": "电脑隔层标称尺寸",
+          "value": null,
+          "unit": "inch"
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 129,
+        "max": 179,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "散步",
+        "轻装出行"
+      ],
+      "advantages": [
+        "样例背包中自重最低",
+        "价格区间较低"
+      ],
+      "disadvantages": [
+        "电脑隔层信息未知",
+        "容量较小"
+      ],
+      "exclusions": [
+        "必须确认电脑隔层",
+        "多日旅行"
+      ],
+      "buying_advice": [
+        "未知电脑隔层不应被当作支持",
+        "少量随身物品场景可优先考虑"
+      ]
+    },
+    {
+      "product_id": "sample-bag-04",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-bag-04",
+      "data_kind": "sample",
+      "name": "样例轻装 Travel-02（虚构样例）",
+      "category": "双肩包",
+      "brand": "样例轻装",
+      "model": "Travel-02",
+      "parameters": {
+        "capacity_l": {
+          "label": "容量",
+          "value": 32,
+          "unit": "L"
+        },
+        "weight_g": {
+          "label": "空包重量",
+          "value": 1000,
+          "unit": "g"
+        },
+        "laptop_inches": {
+          "label": "电脑隔层标称尺寸",
+          "value": 16,
+          "unit": "inch"
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": false,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 499,
+        "max": 599,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "短途旅行",
+        "短途出差"
+      ],
+      "advantages": [
+        "容量较大",
+        "提供样例电脑隔层"
+      ],
+      "disadvantages": [
+        "自重较高",
+        "没有防水设计"
+      ],
+      "exclusions": [
+        "雨天需要防水",
+        "追求轻量通勤"
+      ],
+      "buying_advice": [
+        "不要为了偶尔旅行牺牲日常轻量需求",
+        "容量数据是样例设定不是测量结果"
+      ]
+    },
+    {
+      "product_id": "sample-bag-05",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-bag-05",
+      "data_kind": "sample",
+      "name": "样例山行 Rain-01（虚构样例）",
+      "category": "双肩包",
+      "brand": "样例山行",
+      "model": "Rain-01",
+      "parameters": {
+        "capacity_l": {
+          "label": "容量",
+          "value": 22,
+          "unit": "L"
+        },
+        "weight_g": {
+          "label": "空包重量",
+          "value": 650,
+          "unit": "g"
+        },
+        "laptop_inches": {
+          "label": "电脑隔层标称尺寸",
+          "value": 14,
+          "unit": "inch"
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": true,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 359,
+        "max": 429,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "雨天通勤",
+        "日常通勤"
+      ],
+      "advantages": [
+        "样例防水设计",
+        "容量介于轻量与旅行款之间"
+      ],
+      "disadvantages": [
+        "不能确认适配16英寸电脑",
+        "重量高于轻量款"
+      ],
+      "exclusions": [
+        "携带16英寸电脑",
+        "要求浸水保护"
+      ],
+      "buying_advice": [
+        "防水等级未知需明确提示",
+        "需进一步核实实际电脑尺寸"
+      ]
+    },
+    {
+      "product_id": "sample-bag-06",
+      "source_id": "src-local-synthetic-v1",
+      "evidence_id": "ev-bag-06",
+      "data_kind": "sample",
+      "name": "样例山行 Hike-02（虚构样例）",
+      "category": "双肩包",
+      "brand": "样例山行",
+      "model": "Hike-02",
+      "parameters": {
+        "capacity_l": {
+          "label": "容量",
+          "value": 38,
+          "unit": "L"
+        },
+        "weight_g": {
+          "label": "空包重量",
+          "value": 1200,
+          "unit": "g"
+        },
+        "laptop_inches": {
+          "label": "电脑隔层标称尺寸",
+          "value": null,
+          "unit": "inch"
+        },
+        "waterproof": {
+          "label": "防水设计",
+          "value": true,
+          "unit": null
+        },
+        "waterproof_rating": {
+          "label": "防水等级",
+          "value": null,
+          "unit": null
+        }
+      },
+      "price_range": {
+        "min": 699,
+        "max": 799,
+        "currency": "CNY"
+      },
+      "use_cases": [
+        "户外徒步",
+        "多日旅行"
+      ],
+      "advantages": [
+        "样例容量较大",
+        "偏重户外携带需求"
+      ],
+      "disadvantages": [
+        "本样例背包中自重最高",
+        "电脑隔层信息未知"
+      ],
+      "exclusions": [
+        "必须确认电脑隔层",
+        "追求低于500g自重"
+      ],
+      "buying_advice": [
+        "城市通勤不一定需要大容量户外款",
+        "背负舒适性未量化，不能据此保证舒适"
+      ]
+    }
+  ]
+}

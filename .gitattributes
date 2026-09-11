@@ -1,0 +1,2 @@
+# Keep catalog byte hashes stable across Windows/Linux checkouts.
+/backend/app/catalog/*.json text eol=lf

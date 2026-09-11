@@ -1,4 +1,4 @@
-# 当前架构：Phase 1A–1C
+# 当前架构：Phase 1A–1C 与 Phase 2A
 
 更新：2026-09-11。本文区分当前可验证实现和后续目标，不将目标架构写成现状。
 
@@ -16,7 +16,9 @@ Flutter 原有页面 → FastAPI 路由
                      │        → 摘要 + 用户原文 + 最近历史 → 模型回复 Schema
                      │        → 原子保存完整历史与上下文 → JSON／SSE v1 五类事件
                      ├─ 原有 suggest/filter/report（借用同一池）
-                     └─ 本地 Mock 商品对比／模拟趋势
+                     ├─ 本地 Mock 商品对比／模拟趋势（尚未迁移）
+                     └─ knowledge 只读API → 已校验的固定样例快照 → 商品／证据
+                          （暂未接入 Flutter、聊天和旧比价）
 ```
 
 `BaseAPIClient` 负责传输、连接池工厂、安全错误分类及模型非流式 envelope 校验。
@@ -72,12 +74,39 @@ Flutter 的 `chat_stream_decoder.dart` 负责组帧和状态校验；`api_servic
 整轮处理预算与 HTTP 空闲超时分开配置，移除人为 15ms 逐字延迟；本地桩的分块到达验证不是模型首字性能评测。
 流式失败不自动重放，暂不提供恢复游标或幂等请求。保存后的传输失败可能导致客户端无法确认；不承诺将文件提交与网络送达合为一个事务。
 
+## 固定样例知识库（Phase 2A）
+
+`models/knowledge.py` 定义商品事实、参数、价格区间、来源、目录及响应 Schema。
+`catalog/sample-products.v1.json` 是随代码分发的单一数据源，不放入被忽略的 `data/` 运行目录。
+它包含18条虚构商品记录与一个明确标为 `local_synthetic` 的来源；不是从已有随机 Mock 或真实电商导入。
+
+```text
+lifespan → ProductCatalog 读取最多2MB原始字节
+         → 拒绝重复JSON键／无效编码／非有限数
+         → Pydantic校验字段、ID唯一性、来源引用、价格区间
+         → 每worker只读内存快照 + 原始文件SHA-256（样例JSON由.gitattributes固定LF）
+GET knowledge/products → 精确品类／品牌过滤 → product_id稳定排序 → 分页
+GET knowledge/products/{id} → 商品副本 + 快照身份
+GET knowledge/evidence/{id} → 同一商品事实 + 来源 + /products/N定位 + 快照身份
+```
+
+这里的 ID 字典只是查找映射，**还没有语义切片、关键词索引、向量召回或 Rerank**。
+证据从同一份校验后的商品字段生成，避免两份描述漂移；返回深拷贝，防止调用者污染快照。
+参数含 `value/unit/label`，未知值是 `null`；耳机单耳与头戴整机重量使用不同参数键，不能直接混排比较。
+价格为合成 `min/max/CNY` 区间，不是实时价格或历史序列。
+
+知识文件缺失、过大或不合法时，记录安全错误类型并将 knowledge API 标记为503；不调用模型补齐、不回退旧随机Mock。
+健康接口仍表示进程存活，而非所有子模块就绪。文件变动需重启加载；多worker需使用相同版本文件，响应SHA可用于核对。
+现有 Dockerfile 的 `COPY app/ ./app/` 已覆盖该文件；没有新增依赖、写接口、配置或数据库迁移。
+旧比价、趋势、报告和聊天尚未消费这个知识库，不能将它们的结论称为有据推荐。
+
 ## 验证边界与后续顺序
 
 1. **Phase 1A 已完成离线验证**：缓存、识别 Schema、传输生命周期与既有接口兼容检查。
 2. **Phase 1B 已完成离线验证**：会话持久化、摘要与识别上下文。
 3. **Phase 1C 已完成离线及本地 HTTP 模型桩验证**：SSE 协议、增量解码、错误／取消与 Flutter 消费。现有 Phase 1 工程检查 32/32 通过，不等于所有产品验收要求均已满足。
-4. **Phase 2–5 尚未完成**：商品知识 RAG、需求结构化、硬过滤／软排序、单 Agent 状态机、长期偏好、80 条产品评测；旧报告等业务专用 Schema 也随相应模块收紧。
+4. **Phase 2A 已完成离线与本地 HTTP 验证**：严格商品知识 Schema、18条固定样例、Metadata查询、证据定位及坏文件隔离。
+5. **Phase 2B 及 Phase 3–5 尚未完成**：知识切片、混合检索与Rerank、需求结构化、硬过滤／软排序、单 Agent 状态机、长期偏好、80 条产品评测；旧报告等业务专用 Schema 也随相应模块收紧。
 
 离线模型桩检查不证明真实视觉识别质量、购物推荐质量或真实模型首字延迟；部署、真实模型及真机尚未验证。
-具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)和 [1C 记录](modules/01c-streaming-protocol.md)。
+具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md) 和 [2A 记录](modules/02a-product-knowledge.md)。

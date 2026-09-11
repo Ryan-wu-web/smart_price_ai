@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2–5 尚未完成，其他业务 Schema 将随相应模块收紧。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
+> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2 的混合检索及 Phase 3–5 尚未完成，其他业务 Schema 将随相应模块收紧。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
 
 ---
 
@@ -121,7 +121,7 @@ cp .env.example .env
 
 ```env
 # 火山引擎配置（必填）
-VOLCENGINE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+VOLCENGINE_API_KEY=your-api-key-here
 VOLCENGINE_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3/chat/completions
 VOLCENGINE_MODEL=ep-xxxxxxxxxxxxx
 
@@ -140,11 +140,35 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 服务启动后访问 http://localhost:8000/docs 查看 Swagger API 文档。
 
 本地基础功能不要求 Redis 或 PostgreSQL 已启动；当前它们未进入主链路。
-没有模型配置时 `/health` 和本地样例商品接口可用，但真实识别／对话不可用。
+没有模型配置时 `/health` 和 `/api/v1/knowledge/*` 本地样例商品接口可用，但真实识别／对话不可用。
 连接池及 JSON 修复参数见 `backend/.env.example` 和 [API 说明](docs/api.md)。
 已验证隔离 ASGI 接口、离线模型桩，以及本地 Uvicorn 启动／健康接口／OpenAPI；没有执行真实模型、真机或 Docker 构建。
 
 会话文件位于从 `backend` 启动时的 `data/sessions`。请保留该目录且仅运行一个后端进程；本模块兼容旧历史数组，成功回复后自动写入版本 2，坏文件保留并报错。回退旧代码前须备份该目录，新格式不能直接交给旧版本读取。会话 ID 并非登录凭证，目前没有账号级隔离，不宜直接向公网开放。
+
+### 无模型配置也可验证：固定样例商品知识库（Phase 2A）
+
+后端启动后，另开一个 PowerShell 窗口：
+
+```powershell
+# 查询全部固定样例（默认每页20条，目前共18条）
+$catalog = Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/knowledge/products'
+$catalog.catalog
+$catalog.products | Select-Object product_id, name, category, evidence_id
+
+# 查商品及其证据，无须 API Key、Redis 或 PostgreSQL
+Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/knowledge/products/sample-shoe-01'
+Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/knowledge/evidence/ev-shoe-01'
+```
+
+数据随代码保存在 `backend/app/catalog/sample-products.v1.json`，不属于可删除的运行缓存。
+18条记录覆盖运动鞋、耳机、双肩包，品牌、参数和人民币价格均是**虚构工程样例**，不是厂商事实或在售报价。
+所有响应附带样例声明、数据集版本和文件 SHA-256；证据还带商品 ID、来源与 JSON Pointer。
+按品类／品牌查询是精确 Metadata 筛选，不是 RAG 或推荐排序，空结果不放宽条件。
+
+该库暂未替换旧 `comparison.py` 随机 Mock，也未接入 Flutter／聊天；**不能据此宣称现有推荐已具备证据**。
+本模块没有新环境变量和数据库迁移。修改样例后递增 `revision` 并重启后端；坏文件只让知识接口返回503，不回退到随机商品。
+详见 [知识接口](docs/api.md#固定样例商品知识库phase-2a) 与 [2A 交付记录](docs/modules/02a-product-knowledge.md)。
 
 ### 3. 启动前端（真机调试）
 

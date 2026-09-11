@@ -1,6 +1,6 @@
 # API：当前实现与兼容边界
 
-更新：2026-09-11，Phase 1A–1C。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
+更新：2026-09-11，Phase 1A–1C 与 Phase 2A。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
 本页不是完整升级验收报告，商品与价格仍为本地样例。
 
 ## 已有接口（没有改名）
@@ -154,3 +154,68 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 报告等旧 API 的宽泛字典输入还没有全面收紧；例如空 `best_choice` 会触发旧逻辑错误，本轮未将其改造为新报告流程。
 `action_data` 仍是兼容字典，不是有商品证据的报告 Schema；应随检索／报告阶段替换，不把通过语法校验等同于推荐有据。
 未实现会话账号授权、跨进程锁或会话管理 API；本地文件存储请使用单进程，勿当作生产级多用户隔离。
+
+## 固定样例商品知识库（Phase 2A）
+
+三个新增只读接口，不改变现有 API。不需要模型密钥或数据库。
+这是**虚构样例知识查询**，不是实时电商、RAG召回或最终推荐；旧聊天／比价尚未使用它。
+
+| 方法 | 路径 | 响应 Schema |
+| --- | --- | --- |
+| GET | `/api/v1/knowledge/products` | `ProductListResponse` |
+| GET | `/api/v1/knowledge/products/{product_id}` | `ProductDetailResponse` |
+| GET | `/api/v1/knowledge/evidence/{evidence_id}` | `EvidenceResponse` |
+
+### 查询及返回约定
+
+- `category`、`brand`：可选，1–80字符，不允许全空白；去除首尾空白后精确匹配，区分大小写，不做别名或模糊召回。
+- `limit`：默认20，范围1–100；`offset`：默认0，非负整数。
+- `product_id`／`evidence_id`：1–64字符，首字符小写字母或数字，其后允许小写字母、数字、`_`、`-`。
+- 列表：`{catalog, total, limit, offset, products}`。`total` 是过滤后分页前总数；按 `product_id` 升序稳定分页，**不是推荐分数顺序**。
+- 未匹配过滤条件或越过末页返回200与空数组；不会静默去掉品牌／品类条件。
+- 详情：`{catalog, product}`；证据：`{catalog, evidence_id, product_id, source, locator, fields}`。
+
+`catalog` 每次包含 `schema_version/dataset_id/revision/sha256/product_count/data_kind/notice`。
+`sha256` 对源文件原始字节计算，样例JSON固定LF以避免跨平台换行漂移；版本与哈希用于标识证据快照，不是服务端签名、真实数据认证或HTTP缓存协商。
+
+### 商品知识 Schema
+
+| 字段 | 含义 |
+| --- | --- |
+| `product_id` | 固定样例商品 ID，如 `sample-shoe-01`，不映射旧 `mock-*` |
+| `name/category/brand/model` | 非空虚构名称、品类、品牌与型号 |
+| `parameters` | 参数键到 `{label, value, unit}` 的映射；标量value或null，unit可空 |
+| `price_range` | `{min,max,currency:"CNY"}`；非负有限数且min≤max，均为样例设定 |
+| `use_cases` | 适用场景 |
+| `advantages/disadvantages` | 样例优点与缺点 |
+| `exclusions` | 商品不适用情形，不是从用户推测的长期排斥条件 |
+| `buying_advice` | 选购提醒，不保证真实体验 |
+| `source_id/evidence_id` | 来源与证据ID，目录加载时检查引用和唯一性 |
+| `data_kind` | 必须为 `sample` |
+
+样例源 `kind` 必须为 `local_synthetic`，描述明确无电商或厂商来源。未知参数保留 `null`，不能解释为0、false或支持某功能。
+参数键使用下划线标识；不同计量口径不应直接比较，例如 `earbud_weight_g` 是单耳重量，`device_weight_g` 是头戴耳机整机重量。
+所有模型禁止额外字段，拒绝非有限数、数值字符串充当价格、重复ID、缺失来源和倒置价格区间。
+
+### 证据追溯
+
+例如 `/api/v1/knowledge/evidence/ev-shoe-01` 返回：
+
+- `product_id = sample-shoe-01`；
+- `source.source_id = src-local-synthetic-v1`，`source.kind = local_synthetic`；
+- `locator = /products/0`，是 `backend/app/catalog/sample-products.v1.json` 中的 JSON Pointer；
+- `fields` 包含该商品的所有 `ProductFacts` 字段，直接从校验后的快照生成，不由LLM补充；
+- `catalog` 标识当前样例版本与文件SHA，并带有虚构数据声明。
+
+来源＋数据集／revision＋SHA＋locator＋商品／证据ID应一起保存。仅凭证据ID不能跨版本证明事实没变。
+证据只证明“样例文件中有这项设定”，**不能证明真实商品具备该参数**。
+目前只有当前快照；历史快照需通过Git版本保留，不提供历史证据API或价格趋势。
+
+### 错误与运行时
+
+- 422：非法查询或ID格式；FastAPI标准输入校验响应。
+- 404：合法ID不存在，`detail.code` 为 `PRODUCT_NOT_FOUND` 或 `EVIDENCE_NOT_FOUND`。
+- 503：目录加载失败，`detail = {"code":"CATALOG_UNAVAILABLE","message":"样例商品库暂时不可用，请稍后重试。"}`。
+- 文件加载上限2,000,000字节，最多5000条商品；当前只有18条，不代表已验证大规模知识库性能。
+- 每worker启动读取一次；不热加载、不接受用户传入文件路径。修改数据需递增revision、校验并重启。
+- 目录失败不阻止进程启动或其他接口工作，`/health` 仍可能返回200；不得将健康接口当知识库就绪检查。

@@ -7,13 +7,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.core.base_api_client import create_http_client
 from app.middleware.error_handler import global_exception_handler
-from app.routers import recognize, suggest, compare, filter, trend, report, chat
+from app.routers import recognize, suggest, compare, filter, trend, report, chat, knowledge
+from app.services.knowledge import CatalogUnavailable, ProductCatalog
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # One pool per app/worker; no import-time sockets or global cross-loop client.
     async with create_http_client() as client:
         app.state.model_http = client
+        try:
+            app.state.product_catalog = ProductCatalog()
+        except CatalogUnavailable:
+            # Catalog endpoints fail explicitly; recognition/chat can still run.
+            app.state.product_catalog = None
         yield
 
 
@@ -46,6 +52,7 @@ app.include_router(filter.router)
 app.include_router(trend.router)
 app.include_router(report.router)
 app.include_router(chat.router)
+app.include_router(knowledge.router)
 
 
 @app.get("/health")
