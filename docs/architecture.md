@@ -192,3 +192,7 @@ POST recommendations：requirements完整状态＋top_k
 工作流运行在现有ChatService中，不引入Agent框架或新依赖；只读推荐计算移到线程，节点回调通过事件循环队列送到SSE。取消停止等待且不提交会话；已经开始的只读线程计算可能自行完成，不声称Python线程可强制取消。最终单帧大小有限制。状态只保存最新购物快照，旧文本消息仍保留；长期偏好尚未实现，也不会从识别或模型猜测自动保存。
 
 Legacy新会话仍可调用原LLM路径，购物状态一旦建立后续保持购物路径。新工作流报告不调用旧report路由。Redis／PostgreSQL与旧Mock迁移仍待后续模块；本地SessionStore只允许单worker，GET会话不是生产鉴权边界。详见 `docs/modules/04a-shopping-workflow.md`。
+
+## Flutter 购物链路（Phase 4B）
+
+聊天页显式发送shopping并按本机最新revision更新；用户确认条件撤销后发送confirm_changes和expected_revision。GET会话恢复只读，失败不重发POST。报告直接呈现workflow.report，不调用旧report接口。客户端再次核验硬检查／商品证据归属／报告快照一致性，详情见modules/04b-flutter-shopping.md。

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../models/shopping_decision.dart';
 
 /// Parses blank-line-delimited SSE frames and validates the application protocol.
 /// A v1 result is provisional until its matching end(success: true) arrives.
@@ -128,6 +129,12 @@ class ChatStreamDecoder {
         (data['current_product'] != null &&
             data['current_product'] is! Map<String, dynamic>)) {
       _invalid();
+    }
+    final actions = data['action_data'] as Map<String, dynamic>;
+    if (actions.containsKey('workflow')) {
+      final decision = ShoppingDecision.fromJson(
+          ShoppingDecision.object(actions['workflow']));
+      if (decision.sessionId != data['session_id']) _invalid();
     }
   }
 

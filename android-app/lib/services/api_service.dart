@@ -42,11 +42,13 @@ class ApiService {
     final base64Image = base64Encode(bytes);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/recognize'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'image_base64': base64Image}),
-      ).timeout(const Duration(seconds: 120));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/v1/recognize'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'image_base64': base64Image}),
+          )
+          .timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -70,11 +72,13 @@ class ApiService {
     final base64Image = base64Encode(bytes);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/recognize/multi'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'image_base64': base64Image}),
-      ).timeout(const Duration(seconds: 120));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/v1/recognize/multi'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'image_base64': base64Image}),
+          )
+          .timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -169,11 +173,13 @@ class ApiService {
       throw ApiException(ErrorMessages.noInternet);
     }
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/filter'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'query_text': query}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/v1/filter'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'query_text': query}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -220,15 +226,17 @@ class ApiService {
       throw ApiException(ErrorMessages.noInternet);
     }
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/report'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'product_name': productName,
-          'best_choice': bestChoice,
-          'alternatives': alternatives ?? [],
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/v1/report'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'product_name': productName,
+              'best_choice': bestChoice,
+              'alternatives': alternatives ?? [],
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -244,6 +252,7 @@ class ApiService {
     String message, {
     String? sessionId,
     Map<String, dynamic>? currentProduct,
+    Map<String, dynamic>? shopping,
   }) async {
     if (!await NetworkChecker.isOnline()) {
       throw ApiException(ErrorMessages.noInternet);
@@ -257,6 +266,8 @@ class ApiService {
     if (currentProduct != null) {
       body['current_product'] = currentProduct;
     }
+
+    if (shopping != null) body['shopping'] = shopping;
 
     // A timeout does not prove the server failed to save the turn. Do not replay POSTs.
     try {
@@ -279,15 +290,41 @@ class ApiService {
   static String _chatError(int statusCode) {
     switch (statusCode) {
       case 409:
-        return '会话正在处理或历史无法读取，请稍后重试；仍失败可新建对话，原历史会保留。';
+        return '会话忙碌、需求版本已更新或历史无法读取。请先刷新会话再操作；原历史保留。';
       case 413:
         return '会话过长，请新建对话并带上关键需求。原历史未删除。';
       case 422:
         return '消息、商品信息或会话格式无效，请检查后重试。';
       case 504:
-        return '模型回复超时，请稍后重试。';
+        return '等待回复超时，请先刷新会话查看保存状态。';
       default:
         return '暂时无法完成对话，请稍后重试。';
+    }
+  }
+
+  Future<Map<String, dynamic>> readShoppingSession(String sessionId) async {
+    final client = http.Client();
+    try {
+      final response = await client
+          .get(Uri.parse(
+              '$_baseUrl/api/v1/chat/sessions/${Uri.encodeComponent(sessionId)}'))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        throw ApiException(response.statusCode == 404
+            ? '会话不存在或尚未保存，请新建对话。'
+            : _chatError(response.statusCode));
+      }
+      final value = jsonDecode(response.body);
+      if (value is! Map<String, dynamic>) {
+        throw const FormatException('Invalid session');
+      }
+      return value;
+    } on ApiException {
+      rethrow;
+    } catch (_) {
+      throw ApiException('暂时无法恢复会话，请确认后端已启动后重试。');
+    } finally {
+      client.close();
     }
   }
 
@@ -296,6 +333,7 @@ class ApiService {
     String message, {
     String? sessionId,
     Map<String, dynamic>? currentProduct,
+    Map<String, dynamic>? shopping,
     required void Function(String chunk) onChunk,
     required void Function(Map<String, dynamic> finalData) onDone,
     required void Function(String error) onError,
@@ -328,6 +366,7 @@ class ApiService {
       final body = <String, dynamic>{'message': message};
       if (sessionId != null) body['session_id'] = sessionId;
       if (currentProduct != null) body['current_product'] = currentProduct;
+      if (shopping != null) body['shopping'] = shopping;
       final request =
           http.Request('POST', Uri.parse('$_baseUrl/api/v1/chat/stream'))
             ..headers['Content-Type'] = 'application/json'
@@ -365,6 +404,12 @@ class ApiService {
       if (decoder.error != null) {
         fail(decoder.error!);
       } else if (!notified && cancellation?._cancelled != true) {
+        if (shopping != null &&
+            !(decoder.result!['action_data'] as Map<String, dynamic>)
+                .containsKey('workflow')) {
+          fail('后端尚未返回有据购物工作流，请确认服务端已升级。');
+          return;
+        }
         notified = true;
         onDone(decoder.result!);
       }

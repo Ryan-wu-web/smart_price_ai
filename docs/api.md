@@ -480,3 +480,7 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 `GET /api/v1/chat/sessions/{session_id}`：返回工作流快照、current_product、摘要、最近20条消息。不存在404、损坏409；只适合本地单用户，不具有登录隔离。
 
 SSE仍为v1，`status.node`新增 intent/requirements/completeness/clarification/retrieval/filtering/ranking/explanation/report（validation/save沿用）。确定性购物文字一次delta，不冒充模型token流；result之前的文本仍是临时显示，只有end.success=true后完成。无候选不放宽；目录／工具失败返回 `workflow.status=unavailable` 与安全错误，已确认需求保留。超时与保存失败发 error/end(false)；非流购物超时504。结果过大413且不保存。完整交付边界见 `docs/modules/04a-shopping-workflow.md`。
+
+### Flutter 接入约定（4B）
+
+购物页要求最终 `action_data.workflow`；缺失时提示后端版本不支持，不回退到无据模型推荐。会话恢复使用 `GET /api/v1/chat/sessions/{session_id}`。条件撤销和pending忽略需要确认与revision；报告发送“生成报告”，显示同一workflow内的report。历史快照不可修改。

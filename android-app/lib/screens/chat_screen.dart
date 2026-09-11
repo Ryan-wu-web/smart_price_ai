@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/shopping_decision.dart';
+import '../widgets/shopping_decision_card.dart';
 import '../models/chat_message.dart';
 import '../models/product.dart';
 import '../models/recognition_result.dart';
@@ -33,6 +37,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _streamStatus = '正在连接';
   final _streamCancellation = ChatStreamCancellation();
   Map<String, dynamic>? _currentProduct;
+  ShoppingDecision? _decision;
+  static const _sessionPreferenceKey = 'shopping_session_id';
 
   @override
   void initState() {
@@ -45,13 +51,16 @@ class _ChatScreenState extends State<ChatScreen> {
     } else if (widget.initialRecognition != null) {
       _messages.add(ChatMessage(
         id: 'recognized_product',
-        text: '已带入识别商品：${widget.initialRecognition!.name ?? "待确认商品"}。识别属性可能有误，请确认；图片识别不包含可靠报价。',
+        text:
+            '已带入识别商品：${widget.initialRecognition!.name ?? "待确认商品"}。识别属性可能有误，请确认；图片识别不包含可靠报价。',
         isUser: false,
         timestamp: DateTime.now(),
       ));
     }
     if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
       _sendMessage(widget.initialMessage!);
+    } else if (_currentProduct == null) {
+      unawaited(_restoreLastSession());
     }
   }
 
@@ -66,7 +75,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void _addWelcomeMessage() {
     _messages.add(ChatMessage(
       id: 'welcome',
-      text: '你好！我是你的 AI 购物助手。可以结合识别结果和你的需求讨论选购建议。商品和价格仅为本地样例，不是实时电商报价。',
+      text:
+          '你好！我是你的 AI 购物助手。可以结合识别结果和你的需求讨论选购建议。商品和价格仅为本地样例，不是实时电商报价。请分句表达，例如“推荐耳机，预算500元，最好主动降噪”。不确定的需求会先请你确认。',
       isUser: false,
       timestamp: DateTime.now(),
     ));
@@ -85,7 +95,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
-  Future<void> _sendMessage(String text) async {
+  Future<void> _sendMessage(String text,
+      {Map<String, dynamic>? shopping}) async {
     if (text.trim().isEmpty || _isLoading) return;
 
     setState(() {
@@ -116,6 +127,10 @@ class _ChatScreenState extends State<ChatScreen> {
         text,
         sessionId: _sessionId,
         currentProduct: _currentProduct,
+        shopping: {
+          if (_decision != null) 'expected_revision': _decision!.revision,
+          ...?shopping
+        },
         cancellation: _streamCancellation,
         onStatus: (status) {
           if (!mounted) return;
@@ -141,6 +156,8 @@ class _ChatScreenState extends State<ChatScreen> {
           if (newSessionId != null) _sessionId = newSessionId;
 
           final action = response['action']?.toString() ?? 'none';
+          final decision = ShoppingDecision.fromJson(ShoppingDecision.object(
+              ShoppingDecision.object(response['action_data'])['workflow']));
           final currentProductData = response['current_product'];
           if (currentProductData is Map<String, dynamic>) {
             // Recognition-only context has no price/ID; never manufacture either.
@@ -149,12 +166,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
           setState(() {
             _isLoading = false;
+            _decision = decision;
             final msg = _messages.firstWhere((m) => m.id == streamMsgId);
             msg.text = reply.isNotEmpty ? reply : msg.text;
             msg.action = action;
             msg.actionData = response['action_data'] as Map<String, dynamic>? ??
                 response['actionData'] as Map<String, dynamic>?;
           });
+          if (_sessionId != null) unawaited(_rememberSession(_sessionId!));
           _scrollToBottom();
         },
         onError: (error) {
@@ -178,6 +197,166 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _rememberSession(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sessionPreferenceKey, id);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('会话已保存在服务端，本机未能保存恢复标记。')));
+      }
+    }
+  }
+
+  Future<void> _restoreLastSession() async {
+    setState(() {
+      _isLoading = true;
+      _streamStatus = '正在读取会话恢复标记';
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final id = prefs.getString(_sessionPreferenceKey);
+      if (!mounted) return;
+      if (id != null) {
+        _sessionId = id;
+        await _refreshSession();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('本机恢复标记无法读取，可以新建会话。')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _refreshSession() async {
+    final id = _sessionId;
+    if (id == null) return;
+    setState(() {
+      _isLoading = true;
+      _streamStatus = '正在恢复已保存需求';
+    });
+    try {
+      final data = await ApiService().readShoppingSession(id);
+      final decision =
+          ShoppingDecision.fromJson(ShoppingDecision.object(data['workflow']));
+      if (decision.sessionId != id) {
+        throw const FormatException('Session mismatch');
+      }
+      final history = ShoppingDecision.rows(data['messages']);
+      if (!mounted) return;
+      setState(() {
+        _decision = decision;
+        _currentProduct = data['current_product'] as Map<String, dynamic>?;
+        _messages.clear();
+        for (var i = 0; i < history.length; i++) {
+          final m = history[i];
+          _messages.add(ChatMessage(
+              id: 'restored_$i',
+              text: ShoppingDecision.text(m['content']),
+              isUser: m['role'] == 'user',
+              timestamp: DateTime.now(),
+              actionData: i == history.length - 1 && m['role'] == 'assistant'
+                  ? {'workflow': decision.data}
+                  : null));
+        }
+      });
+      _scrollToBottom();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('暂时无法恢复购物会话，请确认后端状态；可新建会话，原历史不会删除。')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _newSession() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_sessionPreferenceKey);
+    } catch (_) {/* Server history remains untouched. */}
+    if (!mounted) return;
+    setState(() {
+      _sessionId = null;
+      _decision = null;
+      _currentProduct = null;
+      _messages.clear();
+      _addWelcomeMessage();
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _confirmRecognition() async {
+    final category = _currentProduct?['category'];
+    final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('确认识别品类'),
+              content:
+                  Text('确认要选购“$category”吗？仅把品类加入硬条件，不确认识别品牌、价格或真实同款；不会撤销已有品类。'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('取消')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('确认品类'))
+              ],
+            ));
+    if (accepted == true && mounted) {
+      await _sendMessage('确认识别品类', shopping: {'confirm_recognition': true});
+    }
+  }
+
+  Future<void> _confirmChange(
+      ShoppingDecision decision, Map<String, dynamic> item,
+      {required bool pending}) async {
+    final label = pending
+        ? ShoppingDecision.text(
+            ShoppingDecision.object(item['source'])['quote'])
+        : decision.conditionLabel(item);
+    final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: Text(pending ? '确认忽略这句话' : '确认撤销这条条件'),
+              content: Text(
+                  '$label\n${pending ? '忽略后这句话不再阻止推荐，也不会作为已满足条件。' : '撤销后候选范围可能扩大；其余硬条件不变。'}'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('保留')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('确认修改'))
+              ],
+            ));
+    if (accepted == true && mounted) {
+      await _sendMessage('应用已确认的条件调整', shopping: {
+        'expected_revision': decision.revision,
+        'confirm_changes': true,
+        (pending ? 'resolve_pending_ids' : 'remove_condition_ids'): [
+          item['id']
+        ],
+      });
+    }
+  }
+
+  void _openGroundedReport(ShoppingDecision decision) {
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => ReportScreen(
+                productName: '样例商品购物决策', shoppingDecision: decision)));
   }
 
   void _scrollToBottom() {
@@ -231,17 +410,22 @@ class _ChatScreenState extends State<ChatScreen> {
       accentColor: Colors.orange,
       children: [
         if (data['product_a'] != null && data['product_b'] != null)
-          _buildReportRow('对比对象', '${data['product_a']} vs ${data['product_b']}'),
+          _buildReportRow(
+              '对比对象', '${data['product_a']} vs ${data['product_b']}'),
         if (data['differences'] != null)
           _buildReportRow('核心差异', data['differences'].toString()),
         if (data['advantages_a'] != null)
-          _buildReportRow('${data['product_a']} 优势', data['advantages_a'].toString()),
+          _buildReportRow(
+              '${data['product_a']} 优势', data['advantages_a'].toString()),
         if (data['advantages_b'] != null)
-          _buildReportRow('${data['product_b']} 优势', data['advantages_b'].toString()),
+          _buildReportRow(
+              '${data['product_b']} 优势', data['advantages_b'].toString()),
         if (data['suitable_for_a'] != null)
-          _buildReportRow('适合人群', '${data['product_a']}: ${data['suitable_for_a']}'),
+          _buildReportRow(
+              '适合人群', '${data['product_a']}: ${data['suitable_for_a']}'),
         if (data['suitable_for_b'] != null)
-          _buildReportRow('', '${data['product_b']}: ${data['suitable_for_b']}'),
+          _buildReportRow(
+              '', '${data['product_b']}: ${data['suitable_for_b']}'),
       ],
       buttonText: '查看详情',
       onButtonTap: () => _navigateToReport(data),
@@ -404,10 +588,12 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(width: 4),
           _buildDot(2),
           const SizedBox(width: 8),
-          Text(
+          Flexible(
+              child: Text(
             _streamStatus,
-            style: Constants.caption.copyWith(color: Constants.tertiaryTextColor),
-          ),
+            style:
+                Constants.caption.copyWith(color: Constants.tertiaryTextColor),
+          )),
         ],
       ),
     );
@@ -427,7 +613,8 @@ class _ChatScreenState extends State<ChatScreen> {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: Constants.brandColor.withOpacity(0.3 + adjustedValue * 0.7),
+              color:
+                  Constants.brandColor.withOpacity(0.3 + adjustedValue * 0.7),
               shape: BoxShape.circle,
             ),
           ),
@@ -462,32 +649,20 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+              tooltip: '刷新已保存会话',
+              onPressed: _isLoading || _sessionId == null
+                  ? null
+                  : () => _refreshSession(),
+              icon: const Icon(Icons.refresh)),
+          IconButton(
+              tooltip: '新建购物会话（保留原历史）',
+              onPressed: _isLoading ? null : _newSession,
+              icon: const Icon(Icons.add_comment_outlined)),
           TextButton.icon(
-            onPressed: () {
-              final product = _currentProduct;
-              if (product == null ||
-                  product['price'] is! num ||
-                  (product['platform']?.toString().isEmpty ?? true)) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('识别结果没有可靠报价，请先选择本地样例商品再生成价格相关报告。'),
-                ));
-                return;
-              }
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ReportScreen(
-                    productName: product['name'] as String,
-                    bestChoice: {
-                      'name': product['name'],
-                      'platform': product['platform'],
-                      'price': product['price'],
-                    },
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.assignment, size: 18, color: Constants.brandColor),
+            onPressed: _isLoading ? null : () => _sendMessage('生成报告'),
+            icon: const Icon(Icons.assignment,
+                size: 18, color: Constants.brandColor),
             label: const Text(
               '报告',
               style: TextStyle(color: Constants.brandColor, fontSize: 13),
@@ -504,13 +679,33 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: _messages.length,
               itemBuilder: (_, index) {
                 final msg = _messages[index];
+
+                if (msg.actionData?['workflow'] is Map<String, dynamic>) {
+                  final decision = ShoppingDecision.fromJson(
+                      msg.actionData!['workflow'] as Map<String, dynamic>);
+                  final editable = !_isLoading &&
+                      decision.sessionId == _sessionId &&
+                      decision.revision == _decision?.revision;
+                  return Column(children: [
+                    AnimatedChatBubble(message: msg, index: index),
+                    ShoppingDecisionCard(
+                        decision: decision,
+                        editable: editable,
+                        onRemove: (condition) =>
+                            _confirmChange(decision, condition, pending: false),
+                        onDismiss: (condition) =>
+                            _confirmChange(decision, condition, pending: true),
+                        onReport: decision.hasReport
+                            ? () => _openGroundedReport(decision)
+                            : null),
+                  ]);
+                }
                 if (msg.action == 'report' && msg.actionData != null) {
                   return _buildDecisionCard(msg.actionData!);
                 }
                 // 最后一条 AI 消息且正在流式输出时，显示脉冲光标
-                final isStreaming = _isLoading &&
-                    !msg.isUser &&
-                    index == _messages.length - 1;
+                final isStreaming =
+                    _isLoading && !msg.isUser && index == _messages.length - 1;
                 return AnimatedChatBubble(
                   message: msg,
                   index: index,
@@ -519,6 +714,35 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
+          if (!_isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(spacing: 8, children: [
+                if (_currentProduct != null &&
+                    _decision?.data['recognition_confirmed'] != true)
+                  ActionChip(
+                      label: Text(
+                          '确认识别品类：${_currentProduct!['category'] ?? '未知'}'),
+                      onPressed: _confirmRecognition),
+                ActionChip(
+                    label: const Text('推荐耳机'),
+                    onPressed: () => _sendMessage('推荐耳机')),
+                ActionChip(
+                    label: const Text('推荐运动鞋'),
+                    onPressed: () => _sendMessage('推荐运动鞋')),
+                ActionChip(
+                    label: const Text('推荐双肩包'),
+                    onPressed: () => _sendMessage('推荐双肩包')),
+                if (_decision?.status == 'ready') ...[
+                  ActionChip(
+                      label: const Text('解释推荐'),
+                      onPressed: () => _sendMessage('解释推荐')),
+                  ActionChip(
+                      label: const Text('对比候选'),
+                      onPressed: () => _sendMessage('对比候选')),
+                ],
+              ]),
+            ),
           if (_isLoading) _buildTypingIndicator(),
           BottomInputBar(
             controller: _inputController,
@@ -529,7 +753,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 _sendMessage(text);
               }
             },
-            hintText: '输入问题...',
+            hintText: '例如：预算500元，最好主动降噪',
           ),
         ],
       ),
