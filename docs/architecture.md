@@ -90,7 +90,7 @@ GET knowledge/products/{id} → 商品副本 + 快照身份
 GET knowledge/evidence/{id} → 同一商品事实 + 来源 + /products/N定位 + 快照身份
 ```
 
-这里的 ID 字典只是查找映射，**还没有语义切片、关键词索引、向量召回或 Rerank**。
+2A的 ID 字典只是查找映射；2B在其上独立构建下述字段混合索引，浏览接口不使用检索排序。
 证据从同一份校验后的商品字段生成，避免两份描述漂移；返回深拷贝，防止调用者污染快照。
 参数含 `value/unit/label`，未知值是 `null`；耳机单耳与头戴整机重量使用不同参数键，不能直接混排比较。
 价格为合成 `min/max/CNY` 区间，不是实时价格或历史序列。
@@ -100,13 +100,41 @@ GET knowledge/evidence/{id} → 同一商品事实 + 来源 + /products/N定位 
 现有 Dockerfile 的 `COPY app/ ./app/` 已覆盖该文件；没有新增依赖、写接口、配置或数据库迁移。
 旧比价、趋势、报告和聊天尚未消费这个知识库，不能将它们的结论称为有据推荐。
 
+## 样例字段混合检索（Phase 2B）
+
+```text
+lifespan → ProductCatalog只读快照
+         → ProductRetriever：字段／列表项切片＋商品/证据/来源/字段定位Metadata
+         → BM25倒排索引＋字符TF-IDF稀疏向量倒排索引（无外部依赖）
+POST knowledge/search → SearchRequest校验
+         → category/brand精确前置过滤
+         → 片段级关键词／向量打分 → 各通道按商品取最大片段分 → 各取前40
+         → 商品级RRF去重融合 → 证据选择＋词项覆盖率／字段类型确定性重排
+         → SearchResponse：片段原值＋来源/快照定位＋分项分数＋相关性原因
+```
+
+`core/retrieval_config.py`集中定义规则和权重；`models/retrieval.py`定义请求／响应Schema；`services/retrieval.py`负责分词、索引、召回与重排。
+字段切片没有重叠窗口：标量按字段、参数按键、数组按条切分，避免把同一商品的相反事实合并成正向解释。
+返回片段仍可能是负向事实，必须保留role及原值；检索不等于购物约束判断。
+数值原样保存，纯数字向量词项只完整匹配，计量单位／比较运算不在此阶段解析。
+
+索引携带目录版本／SHA，指纹还包含检索参数、字段规则和算法版本。没有复制独立商品事实库或写入用户会话。
+不读取可变工作目录；通过2A的`iter_products()`副本遍历完整快照，避免默认分页截断超过100条商品的索引。
+过滤先于每路候选截断；语料IDF使用整个目录统计，不随筛选重新训练。按商品聚合后再融合，避免重复片段虚增商品票数。
+
+向量实现是字符2–4元片段的TF-IDF＋余弦，不是预训练Embedding；纯语义改写、单汉字、否定表达或库外商品仍可能漏召回／误召回。
+重排是可重建分数的确定性检索Rerank，不是学习式Cross-Encoder，也不替代预算／功能硬过滤或用户软偏好评分。
+索引异常只影响搜索；日志记录模式、计数、指纹和异常类型，不记录查询文本／商品全文／原始异常。
+没有新依赖、模型下载、数据库服务或Docker COPY变更。旧聊天、比价、报告及Flutter尚未消费此索引，不能宣称端到端有据推荐。
+
 ## 验证边界与后续顺序
 
 1. **Phase 1A 已完成离线验证**：缓存、识别 Schema、传输生命周期与既有接口兼容检查。
 2. **Phase 1B 已完成离线验证**：会话持久化、摘要与识别上下文。
 3. **Phase 1C 已完成离线及本地 HTTP 模型桩验证**：SSE 协议、增量解码、错误／取消与 Flutter 消费。现有 Phase 1 工程检查 32/32 通过，不等于所有产品验收要求均已满足。
 4. **Phase 2A 已完成离线与本地 HTTP 验证**：严格商品知识 Schema、18条固定样例、Metadata查询、证据定位及坏文件隔离。
-5. **Phase 2B 及 Phase 3–5 尚未完成**：知识切片、混合检索与Rerank、需求结构化、硬过滤／软排序、单 Agent 状态机、长期偏好、80 条产品评测；旧报告等业务专用 Schema 也随相应模块收紧。
+5. **Phase 2B 已完成离线与本地 HTTP 验证**：字段切片、BM25＋字符TF-IDF召回、前置Metadata过滤、商品级融合、确定性检索重排和原值证据。
+6. **Phase 3–5 尚未完成**：需求结构化、硬过滤／软偏好排序、检索与聊天／Flutter／报告接入、单Agent状态机、长期偏好、80条产品评测；不是完整RAG生成链路。
 
 离线模型桩检查不证明真实视觉识别质量、购物推荐质量或真实模型首字延迟；部署、真实模型及真机尚未验证。
-具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md) 和 [2A 记录](modules/02a-product-knowledge.md)。
+具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md)、[2A 记录](modules/02a-product-knowledge.md) 和 [2B 记录](modules/02b-hybrid-retrieval.md)。

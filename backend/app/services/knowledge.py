@@ -64,6 +64,11 @@ class ProductCatalog:
                     self._info.dataset_id, self._info.revision,
                     self._info.product_count, self._info.sha256)
 
+    def iter_products(self):
+        """Yield isolated facts for index construction, without pagination truncation."""
+        for product in self._products.values():
+            yield product.model_copy(deep=True)
+
     def info(self) -> CatalogInfo:
         return self._info.model_copy(deep=True)
 

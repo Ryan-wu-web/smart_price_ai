@@ -219,3 +219,62 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 - 文件加载上限2,000,000字节，最多5000条商品；当前只有18条，不代表已验证大规模知识库性能。
 - 每worker启动读取一次；不热加载、不接受用户传入文件路径。修改数据需递增revision、校验并重启。
 - 目录失败不阻止进程启动或其他接口工作，`/health` 仍可能返回200；不得将健康接口当知识库就绪检查。
+
+
+## 样例知识混合检索（Phase 2B）
+
+`POST /api/v1/knowledge/search` → `SearchResponse`。请求为JSON，不改动原三个GET接口。
+此接口只检索样例字段，不调用模型、不执行预算／功能硬约束，不输出最终购买推荐。
+
+```json
+{"query":"雨天通勤","category":"运动鞋","top_k":5,"mode":"hybrid"}
+```
+
+| 输入 | 规则 |
+| --- | --- |
+| `query` | 必填字符串，去首尾空白后1–240字符，含字母或数字（含汉字）；拒绝空白和纯符号。NFKC归一化后最长480字符 |
+| `category/brand` | 可选，null或1–80字符；去首尾空白后精确匹配，过滤先于通道候选截断，不隐式去除过滤条件 |
+| `top_k` | 严格整数，默认5，1–10；不接受字符串或布尔值 |
+| `mode` | `hybrid`（默认）、`keyword`、`vector`；后两者用于独立查询／通道对照，不触发模型 |
+
+拒绝未知输入字段。query分析采用NFKC＋小写、汉字二元词项／ASCII词及型号；字符向量使用2–4元字符片段，纯数字按完整词项编码，避免局部数字误匹配。不是分词大模型或语义Embedding，单汉字查询可能没有词项匹配。
+
+### 输出与证据
+
+- `catalog`：沿用2A快照身份和样例声明；目录文件未修改。
+- `index`：`algorithm`、`fingerprint`、`chunk_count`、`keyword_vocabulary`、`vector_vocabulary`、`vector_method="character_tfidf"`。指纹包含算法版本、参数、字段／角色规则及目录身份；不是签名或质量分数。
+- `request`：通过校验的原请求（首尾空白已去除，不回显内部归一化词项替换后的查询）。
+- `eligible_products`：精确品类／品牌过滤后数量。
+- `recalled_products`：每路至多40个商品，经去重融合后、最终top_k截断前的数量。不是全库满足购物条件的商品数。
+- `hits`：按相关性分数降序，平分按商品ID升序；每商品最多一条。
+- `empty_reason`：成功有命中为null；`no_metadata_match`是过滤后无商品；`no_term_match`是没有通过词项／字符向量阈值的命中。空结果200，明确返回空数组，不放宽过滤、不生成替代商品。
+- `warnings`：始终提示样例检索与条件判断、负向证据、字符向量的限制。
+
+每条命中含 `product_id/evidence_id/name/category/brand/model`、`score`、`scores`、`matched_fields`、`match_reasons` 和最多5条 `evidence`（默认配置）。
+`scores`记录最高BM25分数、最高字符余弦相似度、两路名次、融合分、词项覆盖率及字段类型分。分数反映资料相关性，**不是商品质量／推荐置信度**。
+
+每条证据含：
+
+- `chunk_id`（证据ID＋字段路径）、`product_id/evidence_id/source_id`；
+- `field`，如`parameters/waterproof`或`use_cases/0`；
+- `locator`，如`/products/3/parameters/waterproof`，对应当前目录原文件的JSON Pointer；
+- `label`、`role`（`identity/fact/benefit/caveat/advice`）、校验后快照的字段`value`、确定性展示`text`；
+- `matched_terms`、本片段的`keyword_score`及`vector_similarity`。
+
+参数片段保留整个`{label,value,unit}`对象，列表按条切片；`false`和`null`不替换成“支持”。`text`由字段值格式化，不由LLM补齐。
+角色是字段类型，不是完整的语义极性判断；即使role为fact，也必须读取value确认真假／未知。
+来源详情可用原`GET /api/v1/knowledge/evidence/{evidence_id}`查询；消费端应核对catalog SHA一致，保留完整快照身份。证据只证明样例数据有该设定。
+
+### 融合与重排
+
+完整公式及默认参数见 [2B模块文档](modules/02b-hybrid-retrieval.md)。BM25和字符向量都在字段片段上打分，先按商品取该通道最大片段分，再分别截断候选。
+商品级RRF避免同一商品因多片段重复命中获得额外投票；确定性重排使用融合分、返回证据的查询词项覆盖率及字段类型分。
+这是检索Rerank，**不是Phase 3的硬约束过滤与软偏好排序**；不使用Cross-Encoder，也不声称学习排序或语义模型能力。
+
+### 错误与运行边界
+
+- 422：输入不符合Schema。
+- 503：索引不可用／检索内部失败，`detail={"code":"RETRIEVAL_UNAVAILABLE","message":"样例商品检索暂时不可用，请稍后重试。"}`，不返回堆栈或内部异常文本。
+- 每worker初始化一次；最多20,000片段、每路200,000词项，超过限制时拒绝建立索引而非只索引前一部分。
+- 索引失败不阻断已有目录／识别／对话；目录失败时搜索也503。`/health`不是索引就绪检查。
+- 无查询缓存、热更新或向量持久化；重启重建。未接入聊天、Flutter和报告，也不自动存入用户偏好。

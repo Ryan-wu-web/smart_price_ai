@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2 的混合检索及 Phase 3–5 尚未完成，其他业务 Schema 将随相应模块收紧。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
+> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2B 已实现可追溯混合检索（BM25＋字符TF-IDF、融合及重排），但不是预训练语义Embedding，也不是完整推荐链路。Phase 3–5 尚未完成，其他业务 Schema 将随相应模块收紧。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
 
 ---
 
@@ -169,6 +169,29 @@ Invoke-RestMethod 'http://127.0.0.1:8000/api/v1/knowledge/evidence/ev-shoe-01'
 该库暂未替换旧 `comparison.py` 随机 Mock，也未接入 Flutter／聊天；**不能据此宣称现有推荐已具备证据**。
 本模块没有新环境变量和数据库迁移。修改样例后递增 `revision` 并重启后端；坏文件只让知识接口返回503，不回退到随机商品。
 详见 [知识接口](docs/api.md#固定样例商品知识库phase-2a) 与 [2A 交付记录](docs/modules/02a-product-knowledge.md)。
+
+### 查询样例知识证据（Phase 2B）
+
+后端启动后，在 PowerShell 执行：
+
+```powershell
+$body = @{ query = '雨天通勤'; category = '运动鞋'; top_k = 5 } | ConvertTo-Json
+$result = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/v1/knowledge/search' `
+  -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+$result.hits | Select-Object product_id, name, score, matched_fields
+$result.hits[0].evidence | Format-List field, locator, value, role
+$result.warnings
+```
+
+这是**相关资料检索**，不是最终购物推荐：`score`是检索相关性，不是置信度或条件满足率。
+品类／品牌先精确过滤，再执行BM25和字符TF-IDF双路召回、商品级名次融合及确定性重排。
+缺点、排斥场景、false及null也可能命中，证据保留原值；不要仅因出现“防水”一词就认定该商品支持防水。
+字符向量无需下载模型，但不具备预训练语义理解，短词、同义改写和库外商品可能漏召回。
+
+无需新依赖／环境变量／数据库，索引随当前固定快照在启动时构建。参数集中于 `backend/app/core/retrieval_config.py`。
+索引故障仅让搜索接口503，已有知识查询可继续；修改参数后重启，用响应`index.fingerprint`辨别索引配置。
+尚未接入Flutter和聊天，未完成预算／功能硬约束与购物偏好排序；不能把检索命中直接当购买建议。
+详见 [检索API](docs/api.md#样例知识混合检索phase-2b) 和 [2B交付记录](docs/modules/02b-hybrid-retrieval.md)。
 
 ### 3. 启动前端（真机调试）
 

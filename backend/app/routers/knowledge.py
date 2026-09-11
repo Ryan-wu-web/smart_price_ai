@@ -1,4 +1,5 @@
 """Read-only sample knowledge API, additive to existing shopping routes."""
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
@@ -7,6 +8,9 @@ from app.models.knowledge import (
     EvidenceResponse, ProductDetailResponse, ProductListResponse,
 )
 from app.services.knowledge import ProductCatalog
+from app.models.retrieval import SearchRequest, SearchResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["sample-knowledge"])
 
@@ -54,3 +58,16 @@ def get_evidence(evidence_id: SafeId, catalog: CatalogDependency):
             "code": "EVIDENCE_NOT_FOUND", "message": "对应样例证据不存在。",
         })
     return evidence
+
+
+@router.post("/search", response_model=SearchResponse)
+def search_products(body: SearchRequest, request: Request):
+    retriever = getattr(request.app.state, "product_retriever", None)
+    if retriever is not None:
+        try:
+            return retriever.search(body)
+        except Exception as exc:
+            logger.error("retrieval_query_failed type=%s", type(exc).__name__)
+    raise HTTPException(status_code=503, detail={
+        "code": "RETRIEVAL_UNAVAILABLE", "message": "样例商品检索暂时不可用，请稍后重试。",
+    })
