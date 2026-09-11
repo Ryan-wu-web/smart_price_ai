@@ -10,7 +10,7 @@
 | 00 升级前代码整理 | 已完成清理与静态验证，运行时能力未验证 | [清理记录](00-cleanup.md) |
 | Phase 1 基础链路 | 1A–1C 已完成离线工程验证与本地流式模型桩验证，真实模型／真机未验证 | [1A 记录](01a-recognition-foundation.md) · [1B 记录](01b-conversation-context.md) · [1C 记录](01c-streaming-protocol.md) |
 | Phase 2 商品知识库 RAG | 2A 固定样例、2B字段混合检索与证据已验证；尚未接入业务生成链路 | [2A 记录](02a-product-knowledge.md) · [2B 记录](02b-hybrid-retrieval.md) |
-| Phase 3 结构化需求与排序 | 3A 需求Schema／规则解析／显式增量编辑已验证；3B过滤与排序尚未开始 | [3A 记录](03a-structured-requirements.md) |
+| Phase 3 结构化需求与排序 | 3A需求结构化、3B完整事实过滤／软偏好排序／逐条件证据已验证；旧聊天／Flutter未接入 | [3A 记录](03a-structured-requirements.md) · [3B记录](03b-evidence-ranking.md) |
 | Phase 4 工作流与记忆 | 尚未开始 | 后续记录 |
 | Phase 5 评测与交付 | 尚未开始 | 后续记录 |
 

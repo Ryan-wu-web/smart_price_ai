@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2B 已实现可追溯混合检索（BM25＋字符TF-IDF、融合及重排），但不是预训练语义Embedding，也不是完整推荐链路。Phase 3A 已提供结构化需求与显式增量编辑接口（保守规则解析，无模型调用），尚未接入聊天／Flutter；Phase 3B 的硬过滤／软偏好排序及 Phase 4–5 尚未完成。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
+> **当前状态（本地验证日期：2026-09-12）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2B 已实现可追溯混合检索（BM25＋字符TF-IDF、融合及重排），但不是预训练语义Embedding，也不是完整推荐链路。Phase 3A 已提供结构化需求与显式增量编辑接口（保守规则解析，无模型调用），尚未接入聊天／Flutter。Phase 3B 已新增独立的完整事实过滤、确定性软偏好排序和逐条件证据接口；无候选不自动放宽。旧聊天／报告尚未迁移，Phase 4–5 未完成。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
 
 ---
 
@@ -140,7 +140,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 服务启动后访问 http://localhost:8000/docs 查看 Swagger API 文档。
 
 本地基础功能不要求 Redis 或 PostgreSQL 已启动；当前它们未进入主链路。
-没有模型配置时 `/health` 和 `/api/v1/knowledge/*` 本地样例商品接口可用，但真实识别／对话不可用。
+没有模型配置时 `/health`、`/api/v1/knowledge/*`、`/api/v1/requirements/parse` 和 `/api/v1/recommendations` 本地接口可用，但真实识别／对话不可用。
 连接池及 JSON 修复参数见 `backend/.env.example` 和 [API 说明](docs/api.md)。
 已验证隔离 ASGI 接口、离线模型桩，以及本地 Uvicorn 启动／健康接口／OpenAPI；没有执行真实模型、真机或 Docker 构建。
 
@@ -218,6 +218,28 @@ $requirements.questions
 品牌、用途和一般功能默认软偏好，明确“必须”才是硬要求；预算和品类默认硬条件，排斥条件也是硬条件。
 详细语法、Schema、编辑示例、限制见 [需求API](docs/api.md#结构化需求与增量编辑phase-3a) 和 [3A交付记录](docs/modules/03a-structured-requirements.md)。
 
+### 2.5 从结构化需求生成有据推荐（Phase 3B）
+
+独立API已可运行，暂未接入Flutter／旧聊天。先解析一份新的需求，再传入完整state；不要直接沿用上一示例中排斥了唯一符合预算商品的状态：
+
+```powershell
+$body = @{ message = '推荐耳机，预算500元，必须主动降噪' } | ConvertTo-Json
+$requirements = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/v1/requirements/parse' `
+    -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+$body = @{ requirements = $requirements.state; top_k = 5 } | ConvertTo-Json -Depth 20
+$decision = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/v1/recommendations' `
+    -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+$decision.status
+$decision.recommendations | Select-Object rank, score, @{Name='product_id';Expression={$_.product.product_id}}
+$decision.recommendations[0].hard_checks
+```
+
+固定样例库中该请求返回`sample-audio-01`；没有软偏好，分数为0，不是质量低或模型信心低。
+预算按商品整个价格区间判断；每个硬条件必须有明确事实支持，未知值不通过。
+`components`记录软偏好分项，`hard_checks/soft_checks`包含原值、字段定位和证据ID；商品完整缺点与排斥条件也保留。
+`no_candidates`时查看`constraint_impacts/rejected/relaxation_options`；需在需求接口显式确认更改后重新推荐，服务端不会自动删除条件。
+无需新增依赖、密钥、环境变量或数据库。规则限制、错误降级及实际验证见[推荐API](docs/api.md#有据过滤与偏好排序phase-3b)和[3B交付记录](docs/modules/03b-evidence-ranking.md)。
+
 ### 3. 启动前端（真机调试）
 
 ```bash
@@ -254,6 +276,7 @@ flutter run
 | [`docs/modules/01b-conversation-context.md`](docs/modules/01b-conversation-context.md) | Phase 1B 会话、摘要、识别上下文与实际验证 |
 | [`docs/modules/01c-streaming-protocol.md`](docs/modules/01c-streaming-protocol.md) | Phase 1C SSE 协议、客户端消费与实际验证 |
 | [`docs/modules/03a-structured-requirements.md`](docs/modules/03a-structured-requirements.md) | Phase 3A 需求结构化、增量确认与真实验证 |
+| [`docs/modules/03b-evidence-ranking.md`](docs/modules/03b-evidence-ranking.md) | Phase 3B 完整事实过滤、偏好分项、无候选解释与真实验证 |
 | [`docs/api.md`](docs/api.md) | 现有接口、识别字段及错误约定 |
 | [`docs/architecture.md`](docs/architecture.md) | 当前运行链路与尚未完成的架构部分 |
 

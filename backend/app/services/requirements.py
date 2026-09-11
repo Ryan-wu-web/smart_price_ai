@@ -187,7 +187,6 @@ class RequirementParser:
         for pid in request.resolve_pending_ids:
             pending[pid].resolved_turn = turn
         state.revision = turn
-        warnings = []
 
         def append_condition(value, source):
             sig = _signature(value)
@@ -229,7 +228,14 @@ class RequirementParser:
             state.intent_source = None if request.intent == "unknown" else RequirementSource(kind="user_edit", turn=turn, quote=f"intent={request.intent}")
         if len(state.conditions) > cfg.MAX_ITEMS or len(state.pending) > cfg.MAX_ITEMS:
             raise RequirementUpdateError("需求记录已达容量上限，请新建需求；本次更新未应用。", "REQUIREMENT_LIMIT")
+        response = self.analyze(state)
+        logger.info("requirements_parsed revision=%d status=%s hard=%d soft=%d pending=%d conflicts=%d", turn, response.status, len(response.hard_constraints), len(response.soft_preferences), sum(p.resolved_turn is None for p in response.state.pending), len(response.conflicts))
+        return response
+
+    def analyze(self, state: UserRequirements) -> RequirementParseResponse:
+        """Read-only assessment; do not invent a turn or alter client-carried history."""
         state = UserRequirements.model_validate(state.model_dump())
+        warnings = []
         active_conditions = [c for c in state.conditions if c.removed_turn is None]
         hard = [c for c in active_conditions if c.strength == "hard"]
         soft = [c for c in active_conditions if c.strength == "soft"]
@@ -257,6 +263,4 @@ class RequirementParser:
             exclusions=[c for c in hard if c.operator == "ne" or (c.field == "feature" and c.value is False)],
             conflicts=conflicts, missing_information=missing, questions=questions, warnings=warnings,
         )
-        # Safe trace only: no raw user text, preference values or request body in logs.
-        logger.info("requirements_parsed revision=%d status=%s hard=%d soft=%d pending=%d conflicts=%d", turn, response.status, len(hard), len(soft), len(unresolved), len(conflicts))
         return RequirementParseResponse.model_validate(response.model_dump())

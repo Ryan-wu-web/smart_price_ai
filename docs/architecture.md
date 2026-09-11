@@ -1,6 +1,6 @@
-# 当前架构：Phase 1A–1C、Phase 2A–2B 与 Phase 3A
+# 当前架构：Phase 1A–1C、Phase 2A–2B 与 Phase 3A–3B
 
-更新：2026-09-11。本文区分当前可验证实现和后续目标，不将目标架构写成现状。
+更新（本地验证日期）：2026-09-12。本文区分当前可验证实现和后续目标，不将目标架构写成现状。
 
 ## 当前调用链
 
@@ -145,7 +145,31 @@ POST requirements/parse（独立于旧聊天）
 `source`仅记录本次明确规则命中或结构化用户提交，不能拿来证明跨会话稳定偏好。后续Agent需要在服务端管理状态、接入识别候选确认及长期偏好权限。
 `ready`仅检查基础购物槽位完整性；不同意图的完整度策略、候选存在性和工具执行许可仍属于后续工作流。
 容量和词表集中配置，无新增依赖、环境变量、模型下载、Docker服务或数据迁移。
-发现原有知识详情HTTP层的bool→float类型问题，内部快照未变；该前置修复已记录，需在Phase 3B联调前完成。不要把已有工程回归通过当成未覆盖的JSON类型断言通过。
+Phase 3B已修复原有知识HTTP层bool→float类型问题，并验证列表、详情、证据及推荐中的严格布尔／null／小数。RequirementParser.analyze现在可无副作用地评估state，不增加虚假轮次，原解析接口保持兼容。
+
+## 完整事实推荐（Phase 3B）
+
+```text
+POST recommendations：requirements完整状态＋top_k
+  → 只读需求评估：缺槽位／pending／冲突时返回问题；非推荐意图不执行
+  → 硬品类精确圈定完整目录范围
+  → 既有混合检索：相关片段、召回计数、原值证据
+  → 用同品类完整快照补齐候选（不让搜索top-K造成假空结果）
+  → evaluate_condition：逐条硬条件，matched / not_matched / unknown
+  → 仅所有硬条件matched的商品进入score_preferences
+  → 按field/key维度权重计算唯一软偏好匹配比例，记录分项与证据
+  → score降序／ID升序，最后截取top_k，完整商品风险保留
+  → Pydantic结果校验；无候选输出阻断统计和需确认的变更选项，不修改状态
+```
+
+`ProductRecommender`只依赖已有目录、索引和需求解析器；没有LLM排序、Embedding下载或新依赖。
+`recommendation_config.py`集中版本、政策说明、权重与上限；旧知识Schema将bool放在数字前，保护严格HTTP类型。
+索引故障／快照不一致明确降级为完整目录扫描；目录故障或过滤／评分／结果异常安全失败503。
+日志记录retrieval、filter_rank、validate节点、状态及计数，不记录原始需求、偏好值或异常文本；这不是Phase 4的持久化Agent State。
+当前以小型只读目录全扫描保障覆盖；检索仍为BM25＋字符TF-IDF，不是神经语义Embedding。
+自由文本风险保留展示但不做语义推断，用途只验证明确精确声明；知识不足拒绝硬条件而非补造参数。
+独立API不调用旧模型／数据库，不修改Flutter、chat、report、session格式；识别实体确认、状态编排和前端展示属于下一阶段。
+无新环境变量、Redis／PostgreSQL接入或Docker配置要求；沿用README原启动命令。
 
 ## 验证边界与后续顺序
 
@@ -155,7 +179,8 @@ POST requirements/parse（独立于旧聊天）
 4. **Phase 2A 已完成离线与本地 HTTP 验证**：严格商品知识 Schema、18条固定样例、Metadata查询、证据定位及坏文件隔离。
 5. **Phase 2B 已完成离线与本地 HTTP 验证**：字段切片、BM25＋字符TF-IDF召回、前置Metadata过滤、商品级融合、确定性检索重排和原值证据。
 6. **Phase 3A 已完成离线与本地 HTTP 验证**：严格需求Schema、保守规则分句解析、携带式增量状态、显式撤销／待确认、冲突及基础槽位判断；未接入聊天／Flutter。
-7. **Phase 3B 与 Phase 4–5 尚未完成**：硬过滤／软偏好排序、检索与聊天／Flutter／报告接入、单Agent状态机、长期偏好、80条产品评测；不是完整RAG生成链路。
+7. **Phase 3B 已完成离线与本地 HTTP 验证**：知识布尔类型、完整事实过滤、加权软偏好排序、分项证据、无候选解释、明确索引降级；独立于旧聊天。
+8. **Phase 4–5 尚未完成**：聊天／Flutter／报告接入、识别实体确认、单Agent状态机、长期偏好、80条产品评测；不是完整拍照到报告链路。
 
 离线模型桩检查不证明真实视觉识别质量、购物推荐质量或真实模型首字延迟；部署、真实模型及真机尚未验证。
-具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md)、[2A 记录](modules/02a-product-knowledge.md) 、[2B 记录](modules/02b-hybrid-retrieval.md) 和 [3A 记录](modules/03a-structured-requirements.md)。
+具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md)、[2A 记录](modules/02a-product-knowledge.md) 、[2B 记录](modules/02b-hybrid-retrieval.md) 、[3A 记录](modules/03a-structured-requirements.md)和[3B记录](modules/03b-evidence-ranking.md)。

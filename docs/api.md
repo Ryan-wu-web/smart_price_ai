@@ -1,6 +1,6 @@
 # API：当前实现与兼容边界
 
-更新：2026-09-11，Phase 1A–1C、Phase 2A–2B 与 Phase 3A。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
+更新（本地验证日期）：2026-09-12，Phase 1A–1C、Phase 2A–2B 与 Phase 3A–3B。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
 本页不是完整升级验收报告，商品与价格仍为本地样例。
 
 ## 已有接口（没有改名）
@@ -389,5 +389,72 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 - 轮次、记录或单句长度超限：409，`REQUIREMENT_LIMIT`。
 - 表达不支持／条件冲突：200及明确业务status，不转成空需求或错误推荐。
 
-**边界**：未接入旧聊天／Flutter、识别上下文或RAG过滤排序；没有会话落盘、长期偏好、模型辅助解析或模型超时场景。本模块不调用模型，无需通过“模型兜底成功”来解释规则成功。
-**另发现的旧接口问题**：现有知识商品详情HTTP响应会把参数false序列化成0.0（内部快照仍为bool）。新需求接口已用布尔往返检查防止同类问题；旧知识接口类型修复列为Phase 3B前置项，不能把旧HTTP数值类型当作严格布尔事实。
+**边界**：需求解析接口本身不执行推荐；其state已可显式交给Phase 3B过滤排序接口。未接入旧聊天／Flutter或识别上下文；没有会话落盘、长期偏好、模型辅助解析或模型超时场景。本模块不调用模型，无需通过“模型兜底成功”来解释规则成功。
+**已修复的知识类型问题（Phase 3B）**：旧知识详情响应曾将false序列化成0.0。现在商品列表、详情、证据与推荐均保留布尔类型，分数和价格仍为数字，null仍为未知；小数不会截断。旧客户端不应继续把0/1当作布尔事实。
+
+
+## 有据过滤与偏好排序（Phase 3B）
+
+`POST /api/v1/recommendations`，JSON响应，独立于旧`filter/chat/report`，不产生SSE，也不调用模型。
+
+请求：`{"requirements": <需求解析接口返回的完整state>, "top_k": 5}`。
+`requirements`使用Phase 3A的严格Schema；`top_k`是1–10的整数，默认5。不接受`relax`等自动放宽参数。
+不增加revision、不修改原状态、不读取旧聊天、不落盘。`intent=compare/explain/report`不会伪装成已完成对比／报告。
+
+### 响应与状态
+
+| 字段 | 含义 |
+| --- | --- |
+| `algorithm_version` | `facts-ranking-v1` |
+| `status` | `ready/needs_clarification/conflict/unsupported_intent/no_candidates` |
+| `assessment` | 只读复用需求完整性和冲突判断，含原state及问题；其中ready不等于推荐成功 |
+| `catalog` | 数据集ID、revision、SHA-256、样例声明 |
+| `policies/weights` | 本轮使用的规则和软偏好权重 |
+| `retrieval_status/retrieval` | `skipped/ok/empty/unavailable`及可用时的完整混合检索响应；不作为资格或偏好得分 |
+| `scoped_products` | 硬品类精确匹配的完整目录商品数 |
+| `supplemented_products` | 上述完整目录中未出现在检索返回hits里的商品数，不等于底层召回遗漏数 |
+| `eligible_products` | 完成全部硬过滤后的总数，先排序再按top_k截取 |
+| `recommendations` | rank、完整product、score、components、hard_checks、soft_checks、reasons以及满足／未满足／未知的条件ID |
+| `rejected_total/rejected` | 淘汰总数及按商品ID最多10条淘汰详情（只列阻断条件）；计数和诊断仍基于全范围 |
+| `constraint_impacts` | 每条硬条件不满足／未知的商品数，以及仅移除该项后通过其余硬条件的数量；各项阻断数可能重叠 |
+| `relaxation_options` | 无候选时的可审视条件ID及上述单项移除计数，`requires_confirmation=true`，仅说明、绝不执行 |
+| `empty_reason/questions/warnings` | `no_category_match/hard_constraints_not_met`；未执行或成功时empty_reason为空；普通用户提示与局限 |
+
+每个条件检查是`matched/not_matched/unknown`，关联condition_id、解释、一个或多个事实引用。
+引用含product_id/evidence_id/source_id/field/locator/value：locator是哈希目录内的JSON Pointer，value保持原字段值。
+参数缺失时引用真实存在的整个`parameters`对象，不虚构不存在参数的路径。商品完整`disadvantages/exclusions/buying_advice`始终返回，不冒充已完成自由文本风险理解。
+
+### 硬规则与软评分
+
+- 先阻断缺槽位、pending、已知冲突；仅推荐意图执行。hard品类严格匹配，品牌不作为预截断条件，因此仍可给出品牌不满足原因。
+- 混合检索查询由品类、正向品牌／用途、参数键构成，最多240字符；超过时明确告警。**所有条件仍完整过滤／评分**。
+- 候选补齐同品类整个快照，即使检索仅返回前1条或0条也不据此判定候选为空。此完整扫描适合当前18条样例，不是大规模搜索性能承诺。
+- 预算上限：`price_range.max <= 上限`；下限：`price_range.min >= 下限`。不能用最低价格冒充整个价格区间符合预算。
+- 布尔必须是真正bool；数字不可使用bool，单位严格相同，单耳／整机／单只／空包重量不混用；null、缺字段、类型或单位错误为unknown。
+- 文本／品牌／品类区分大小写，精确比较，不做子串或隐式同义词扩展。
+- 用途在完整`use_cases`中精确出现才是支持，在完整`exclusions`中精确出现才是明确排斥；两者都没有或同时出现为unknown。不把未声明用途当作不支持；没有自由文本否定推理。
+- 每个硬条件都必须matched；所有硬条件取交集。软偏好不能让被淘汰商品重回排序。
+- 软维度是`field/key`；预算2、品牌1、用途2、每个功能键2、每个参数键2。一个维度内完全相同偏好去重，不同值／运算符按比例匹配。
+- `satisfaction = 满足的唯一偏好数 / 该维度唯一偏好数`，未知和不满足均计0。
+- `contribution = 100 × weight × satisfaction / 有效软维度总权重`；score是各贡献之和，四舍五入到6位。components同时返回条件ID、唯一偏好数、满足数、未知数、权重和贡献。
+- 排序按score降序、product_id升序；无软偏好时全部0分，**不假设便宜优先，也不代表质量差**。检索相关性不加到偏好分中。
+
+例如硬预算1200元耳机、软品牌“样例声途”（权重1）和软主动降噪（权重2）：`sample-audio-04`得100；`sample-audio-01/02`得66.666667，二者按ID并列顺序；这只是固定样例工程结果。
+
+### 无候选、确认与错误
+
+`no_candidates`不返回推荐或修改后的需求。单项移除计数只在当前品类内、按剩余硬条件计算，不保证移除后基础槽位仍齐备；例如删除唯一预算后仍须补充预算上限。
+计数为0说明仅改这一项不够；可以审视多项条件或补充可靠知识，不能据此承诺候选。
+请调用需求接口传previous、remove_condition_ids、必要的additions以及confirm_changes=true，再将返回state提交推荐；只追加更高预算不会撤销旧低预算。
+
+| 情况 | HTTP／行为 |
+| --- | --- |
+| 请求Schema非法／额外放宽参数 | 422 |
+| 缺信息／冲突／无候选／非推荐意图 | 200及明确业务status，没有候选推荐 |
+| 知识库未加载 | 503，`CATALOG_UNAVAILABLE` |
+| 索引为空 | 200，`retrieval_status=empty`、告警及同品类全目录事实扫描 |
+| 索引未加载／查询异常／索引与目录SHA不一致 | 200，`retrieval_status=unavailable`、告警及相同硬规则的全目录扫描，不混用旧索引证据 |
+| 过滤／评分工具异常、证据不一致或最终校验失败 | 503，`RECOMMENDATION_UNAVAILABLE`，友好提示、不输出异常原文 |
+
+规则、权重、查询及详情上限集中于`app/core/recommendation_config.py`，不放进Prompt。无新依赖或环境变量。
+旧对话中的随机Mock、静默放宽和无证据报告还没有改接本接口；本模块完成不代表原有业务链路已经满足全部升级目标。

@@ -18,8 +18,9 @@ class KnowledgeModel(BaseModel):
 
 class KnowledgeParameter(KnowledgeModel):
     label: ShortText
+    # Bool before numbers preserves JSON types through FastAPI/Pydantic.
     # Null means unknown, never zero/false. Numeric units remain explicit.
-    value: Annotated[str, Field(min_length=1, max_length=200)] | float | int | bool | None
+    value: Annotated[str, Field(min_length=1, max_length=200)] | bool | int | float | None
     unit: Annotated[str, Field(min_length=1, max_length=30)] | None = None
 
 
