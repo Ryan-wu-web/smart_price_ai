@@ -50,8 +50,8 @@ class _ResultScreenState extends State<ResultScreen>
     super.dispose();
   }
 
-  void _editAttribute(String title, String currentValue,
-      void Function(String) onConfirm) {
+  void _editAttribute(
+      String title, String currentValue, void Function(String) onConfirm) {
     final controller = TextEditingController(text: currentValue);
     showDialog(
       context: context,
@@ -84,7 +84,8 @@ class _ResultScreenState extends State<ResultScreen>
                 FocusScope.of(focusContext).requestFocus(FocusNode());
               });
             },
-            child: const Text('确定', style: TextStyle(color: Constants.brandColor)),
+            child:
+                const Text('确定', style: TextStyle(color: Constants.brandColor)),
           ),
         ],
       ),
@@ -141,7 +142,8 @@ class _ResultScreenState extends State<ResultScreen>
               ),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.edit, size: 12, color: Constants.secondaryTextColor),
+            const Icon(Icons.edit,
+                size: 12, color: Constants.secondaryTextColor),
           ],
         ),
       ),
@@ -176,8 +178,10 @@ class _ResultScreenState extends State<ResultScreen>
         : confidence >= 0.5
             ? '中等置信度'
             : '低置信度';
-    final imageHeight = (MediaQuery.of(context).size.height * 0.25).clamp(180.0, 280.0);
-    final listHeight = ResponsiveLayout.value(context,
+    final imageHeight =
+        (MediaQuery.of(context).size.height * 0.25).clamp(180.0, 280.0);
+    final listHeight = ResponsiveLayout.value(
+      context,
       small: 130.0,
       medium: 140.0,
       large: 150.0,
@@ -233,7 +237,8 @@ class _ResultScreenState extends State<ResultScreen>
                     width: double.infinity,
                     height: imageHeight,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Constants.largeRadius),
+                      borderRadius:
+                          BorderRadius.circular(Constants.largeRadius),
                       color: const Color(0xFFE8E8ED),
                       boxShadow: const [Constants.shadowCard],
                     ),
@@ -273,49 +278,66 @@ class _ResultScreenState extends State<ResultScreen>
                     children: [
                       FadeTransition(
                         opacity: Tween<double>(begin: 0, end: 1).animate(
-                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+                          CurvedAnimation(
+                              parent: _staggerController,
+                              curve: const Interval(0.0, 0.6,
+                                  curve: Curves.easeOut)),
                         ),
                         child: _buildAttributeChip(
                           '品牌',
                           _result.brand,
                           () => _editAttribute('品牌', _result.brand ?? '', (v) {
-                            setState(() => _result = _result.copyWith(brand: v));
+                            setState(
+                                () => _result = _result.copyWith(brand: v));
                           }),
                         ),
                       ),
                       FadeTransition(
                         opacity: Tween<double>(begin: 0, end: 1).animate(
-                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.15, 0.75, curve: Curves.easeOut)),
+                          CurvedAnimation(
+                              parent: _staggerController,
+                              curve: const Interval(0.15, 0.75,
+                                  curve: Curves.easeOut)),
                         ),
                         child: _buildAttributeChip(
                           '颜色',
                           _result.color,
                           () => _editAttribute('颜色', _result.color ?? '', (v) {
-                            setState(() => _result = _result.copyWith(color: v));
+                            setState(
+                                () => _result = _result.copyWith(color: v));
                           }),
                         ),
                       ),
                       FadeTransition(
                         opacity: Tween<double>(begin: 0, end: 1).animate(
-                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.3, 0.9, curve: Curves.easeOut)),
+                          CurvedAnimation(
+                              parent: _staggerController,
+                              curve: const Interval(0.3, 0.9,
+                                  curve: Curves.easeOut)),
                         ),
                         child: _buildAttributeChip(
                           '类目',
                           _result.category,
-                          () => _editAttribute('类目', _result.category ?? '', (v) {
-                            setState(() => _result = _result.copyWith(category: v));
+                          () =>
+                              _editAttribute('类目', _result.category ?? '', (v) {
+                            setState(
+                                () => _result = _result.copyWith(category: v));
                           }),
                         ),
                       ),
                       FadeTransition(
                         opacity: Tween<double>(begin: 0, end: 1).animate(
-                          CurvedAnimation(parent: _staggerController, curve: const Interval(0.45, 1.0, curve: Curves.easeOut)),
+                          CurvedAnimation(
+                              parent: _staggerController,
+                              curve: const Interval(0.45, 1.0,
+                                  curve: Curves.easeOut)),
                         ),
                         child: _buildAttributeChip(
                           '风格',
                           _result.style,
                           () => _editAttribute('风格', _result.style ?? '', (v) {
-                            setState(() => _result = _result.copyWith(style: v));
+                            setState(
+                                () => _result = _result.copyWith(style: v));
                           }),
                         ),
                       ),
@@ -342,8 +364,8 @@ class _ResultScreenState extends State<ResultScreen>
                           index: 0,
                           child: SuggestionCard(
                             icon: Icons.compare_arrows,
-                            title: '查看同款低价',
-                            subtitle: '跨平台比价',
+                            title: '查看样例商品',
+                            subtitle: '本地样例价格区间',
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -362,8 +384,8 @@ class _ResultScreenState extends State<ResultScreen>
                           index: 1,
                           child: SuggestionCard(
                             icon: Icons.store,
-                            title: '官方旗舰店',
-                            subtitle: '正品保障',
+                            title: '渠道证据说明',
+                            subtitle: '未接入官方渠道',
                             iconColor: Colors.blue,
                             onTap: () {
                               Navigator.push(
@@ -385,16 +407,19 @@ class _ResultScreenState extends State<ResultScreen>
                           index: 2,
                           child: SuggestionCard(
                             icon: Icons.trending_up,
-                            title: '价格走势',
-                            subtitle: '历史价格分析',
+                            title: '历史价格说明',
+                            subtitle: '未接入历史数据',
                             iconColor: Colors.orange,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => TrendScreen(
-                                    productName: _result.name ?? _result.category ?? '未知商品',
-                                    productId: '${_result.name ?? _result.category}_${_result.brand ?? ''}',
+                                    productName: _result.name ??
+                                        _result.category ??
+                                        '未知商品',
+                                    productId:
+                                        '${_result.name ?? _result.category}_${_result.brand ?? ''}',
                                   ),
                                 ),
                               );
@@ -405,8 +430,8 @@ class _ResultScreenState extends State<ResultScreen>
                           index: 3,
                           child: SuggestionCard(
                             icon: Icons.recommend,
-                            title: '相似推荐',
-                            subtitle: '更多类似商品',
+                            title: '同品类样例',
+                            subtitle: '仅本地虚构商品',
                             iconColor: Colors.purple,
                             onTap: () {
                               Navigator.push(
@@ -432,9 +457,12 @@ class _ResultScreenState extends State<ResultScreen>
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(Constants.largeRadius),
+                      borderRadius:
+                          BorderRadius.circular(Constants.largeRadius),
                       boxShadow: const [Constants.shadowCard],
-                      border: const Border(left: BorderSide(color: Constants.brandColor, width: 3)),
+                      border: const Border(
+                          left: BorderSide(
+                              color: Constants.brandColor, width: 3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,7 +495,7 @@ class _ResultScreenState extends State<ResultScreen>
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          '识别到 "${_result.category ?? '未知商品'}"，建议您可以查看同款低价进行比价，或咨询 AI 购物助手获取更多购买建议。',
+                          '识别到 "${_result.category ?? '未知商品'}"，建议您可以查看样例商品进行比价，或咨询 AI 购物助手获取更多购买建议。',
                           style: const TextStyle(
                             fontSize: 13,
                             color: Constants.secondaryTextColor,

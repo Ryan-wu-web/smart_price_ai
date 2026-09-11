@@ -10,6 +10,9 @@ class Product {
   final List<String>? tags;
   final String? imageUrl;
   final double? originalPrice;
+  final double? priceMax;
+  final String? evidenceId;
+  final String? sourceId;
 
   Product({
     required this.id,
@@ -23,10 +26,16 @@ class Product {
     this.tags,
     this.imageUrl,
     this.originalPrice,
+    this.priceMax,
+    this.evidenceId,
+    this.sourceId,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
+      priceMax: (json['price_max'] as num?)?.toDouble(),
+      evidenceId: json['evidence_id']?.toString(),
+      sourceId: json['source_id']?.toString(),
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       brand: json['brand']?.toString(),
@@ -55,6 +64,9 @@ class Product {
       'tags': tags,
       'imageUrl': imageUrl,
       'originalPrice': originalPrice,
+      'price_max': priceMax,
+      'evidence_id': evidenceId,
+      'source_id': sourceId,
     };
   }
 }

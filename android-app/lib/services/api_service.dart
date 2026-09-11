@@ -103,8 +103,8 @@ class ApiService {
       throw ApiException(ErrorMessages.noInternet);
     }
     final queryParams = <String, String>{'category': category};
-    if (brand != null) queryParams['brand'] = brand;
-    if (color != null) queryParams['color'] = color;
+    if (brand != null && brand.trim().isNotEmpty) queryParams['brand'] = brand;
+    if (color != null && color.trim().isNotEmpty) queryParams['color'] = color;
 
     final uri = Uri.parse('$_baseUrl/api/v1/suggest')
         .replace(queryParameters: queryParams);
@@ -140,8 +140,8 @@ class ApiService {
       throw ApiException(ErrorMessages.noInternet);
     }
     final queryParams = <String, String>{'category': category};
-    if (brand != null) queryParams['brand'] = brand;
-    if (color != null) queryParams['color'] = color;
+    if (brand != null && brand.trim().isNotEmpty) queryParams['brand'] = brand;
+    if (color != null && color.trim().isNotEmpty) queryParams['color'] = color;
     if (sortBy != null) queryParams['sort_by'] = sortBy;
     if (filterMode != null) queryParams['filter_mode'] = filterMode;
 

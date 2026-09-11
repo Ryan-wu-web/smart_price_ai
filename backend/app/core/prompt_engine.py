@@ -23,18 +23,6 @@ class PromptEngine:
         )
 
     @staticmethod
-    def suggestion_cards(category: str, brand: str, color: str) -> str:
-        return (
-            "你是一位购物助手。根据以下商品信息，生成 3-5 张建议卡片，"
-            "帮助用户进一步决策。卡片类型包括：lowest_price（全网最低价）、"
-            "official_store（官方旗舰店）、similar_style（相似风格推荐）、"
-            "price_trend（价格趋势提醒）、filter_color（按颜色筛选）。\n\n"
-            f"品类：{category}\n品牌：{brand}\n颜色：{color}\n\n"
-            "请以 JSON 数组输出，每个元素包含 type、title、description 字段。"
-            "只输出 JSON，不要添加任何解释文字。"
-        )
-
-    @staticmethod
     def filter_parse(query_text: str) -> str:
         return (
             "你是一位购物筛选助手。将用户的自然语言筛选请求解析为结构化条件，"
@@ -43,41 +31,6 @@ class PromptEngine:
             "brand（品牌）、platform（平台）。如果某个条件未提及，不要包含该字段。\n\n"
             f"用户请求：{query_text}\n\n"
             "请只输出 JSON，不要添加任何解释文字。"
-        )
-
-    @staticmethod
-    def trend_analysis(product_name: str, prices: list[dict]) -> str:
-        prices_text = "\n".join(
-            [f"- {p['date']}: ¥{p['price']} ({p['platform']})" for p in prices]
-        )
-        return (
-            "你是一位价格分析师。根据以下商品价格历史数据，生成趋势分析。\n\n"
-            f"商品：{product_name}\n历史价格：\n{prices_text}\n\n"
-            "请以 JSON 格式输出，包含字段：trend（趋势描述，如上涨/下跌/平稳）、"
-            "advice（购买建议，如建议等待/立即购买/观望）、"
-            "confidence（置信度，0-1 之间的浮点数）。"
-            "只输出 JSON，不要添加任何解释文字。"
-        )
-
-    @staticmethod
-    def report_generation(
-        product_name: str, best_choice: dict, alternatives: list[dict]
-    ) -> str:
-        alts_text = "\n".join(
-            [
-                f"- {a['name']} ({a['platform']}): ¥{a['price']}，评分{a.get('rating', 'N/A')}"
-                for a in alternatives
-            ]
-        )
-        return (
-            "你是一位购物决策顾问。根据以下信息，为用户生成一份购买决策报告。\n\n"
-            f"目标商品：{product_name}\n"
-            f"最佳选择：{best_choice['name']} ({best_choice['platform']})，"
-            f"¥{best_choice['price']}，评分{best_choice.get('rating', 'N/A')}\n"
-            f"备选方案：\n{alts_text}\n\n"
-            "请以 JSON 格式输出，包含字段：summary（摘要）、pros（优点列表）、"
-            "cons（缺点列表）、recommendation（最终推荐语）。"
-            "只输出 JSON，不要添加任何解释文字。"
         )
 
     @staticmethod

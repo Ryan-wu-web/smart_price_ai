@@ -1,30 +1,15 @@
-import logging
-
-from fastapi import Depends, APIRouter, HTTPException
-
-from app.core.base_api_client import ModelError
-from app.core.dependencies import get_llm_client
-from app.core.llm_client import LLMClient
+from fastapi import APIRouter, HTTPException
 from app.models.schemas import ReportRequest, ReportResponse
+from app.routers.knowledge import CatalogDependency
 from app.services.report import ReportService
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["report"])
 
 
 @router.post("/report", response_model=ReportResponse)
-async def report(request: ReportRequest, llm_client: LLMClient = Depends(get_llm_client)):
+async def report(request: ReportRequest, catalog: CatalogDependency):
     try:
-        service = ReportService(llm_client=llm_client)
-        return await service.generate_report(
-            request.product_name, request.best_choice, request.alternatives
-        )
-    except ModelError as exc:
-        logger.warning("model_request_failed code=%s", exc.code)
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from None
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("request_failed type=%s", type(e).__name__)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return await ReportService(catalog).generate_report(
+            request.product_name, request.best_choice, request.alternatives)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="请选择有效的本地样例商品；客户端提供的名称和价格不能作为报告证据。") from None

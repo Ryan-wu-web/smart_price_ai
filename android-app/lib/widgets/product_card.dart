@@ -51,11 +51,13 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final savings = product.originalPrice != null && product.originalPrice! > product.price
-        ? product.originalPrice! - product.price
-        : 0.0;
+    final savings =
+        product.originalPrice != null && product.originalPrice! > product.price
+            ? product.originalPrice! - product.price
+            : 0.0;
 
-    final imageSize = (MediaQuery.of(context).size.width * 0.22).clamp(80.0, 120.0);
+    final imageSize =
+        (MediaQuery.of(context).size.width * 0.22).clamp(80.0, 120.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -110,7 +112,8 @@ class ProductCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Constants.brandColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(4),
@@ -139,14 +142,17 @@ class ProductCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '¥${product.price.toStringAsFixed(0)}',
+                        product.priceMax == null
+                            ? '¥${product.price.toStringAsFixed(0)}'
+                            : '¥${product.price.toStringAsFixed(0)}–${product.priceMax!.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Constants.accentColor,
                         ),
                       ),
-                      if (product.originalPrice != null && product.originalPrice! > 0) ...[
+                      if (product.originalPrice != null &&
+                          product.originalPrice! > 0) ...[
                         const SizedBox(width: 8),
                         Text(
                           '¥${product.originalPrice!.toStringAsFixed(0)}',
@@ -167,6 +173,12 @@ class ProductCard extends StatelessWidget {
                         color: Colors.orange,
                         fontWeight: FontWeight.w500,
                       ),
+                    ),
+                  if (product.evidenceId != null)
+                    Text(
+                      '样例区间 · 证据 ${product.evidenceId}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Constants.secondaryTextColor),
                     ),
                   if (product.rating != null)
                     Row(

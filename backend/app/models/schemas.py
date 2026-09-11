@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal, Optional
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 from app.models.workflow import ShoppingInput
+from app.models.knowledge import CatalogInfo, SAMPLE_NOTICE
 
 
 class RecognizeRequest(BaseModel):
@@ -40,7 +41,7 @@ class ProductBase(BaseModel):
     color: str
     price: float = Field(..., ge=0)
     platform: str
-    rating: float = Field(default=0.0, ge=0, le=5)
+    rating: float | None = Field(default=None, ge=0, le=5)
     tags: list[str] = Field(default_factory=list)
     original_price: float = Field(default=0.0, ge=0)
     image_url: str = Field(default="")
@@ -48,14 +49,19 @@ class ProductBase(BaseModel):
 
 class ProductResponse(ProductBase):
     id: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = None
+    price_max: float | None = Field(default=None, ge=0)
+    evidence_id: str | None = None
+    source_id: str | None = None
+    data_kind: Literal["sample"] = "sample"
 
     class Config:
         from_attributes = True
 
 
 class CompareQuery(BaseModel):
-    category: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+    category: str = Field(min_length=1, max_length=80)
     brand: Optional[str] = None
     color: Optional[str] = None
     sort_by: Optional[str] = Field(default=None, pattern="^(price|rating)$")
@@ -64,6 +70,9 @@ class CompareQuery(BaseModel):
 
 class CompareResponse(BaseModel):
     products: list[ProductResponse]
+    catalog: CatalogInfo
+    notice: str = SAMPLE_NOTICE
+    explanation: str
 
 
 class FilterRequest(BaseModel):
@@ -82,9 +91,9 @@ class TrendResponse(BaseModel):
 
 
 class ReportRequest(BaseModel):
-    product_name: str
+    product_name: str = Field(min_length=1, max_length=200)
     best_choice: dict[str, Any]
-    alternatives: list[dict[str, Any]] = Field(default_factory=list)
+    alternatives: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
 
 
 class ReportResponse(BaseModel):
@@ -92,6 +101,10 @@ class ReportResponse(BaseModel):
     pros: list[str]
     cons: list[str]
     recommendation: str
+    product_id: str
+    evidence_ids: list[str]
+    catalog: CatalogInfo
+    notice: str = SAMPLE_NOTICE
 
 
 def validate_session_id(value: str) -> str:

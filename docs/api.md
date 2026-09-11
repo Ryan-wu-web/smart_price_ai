@@ -1,6 +1,6 @@
 # API：当前实现与兼容边界
 
-更新（本地验证日期）：2026-09-12，Phase 1A–1C、Phase 2A–2B 与 Phase 3A–3B。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
+更新（本地验证日期）：2026-09-12，Phase 1–3 与 Phase 4A–4D。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
 本页不是完整升级验收报告，商品与价格仍为本地样例。
 
 ## 已有接口（没有改名）
@@ -13,8 +13,8 @@
 | GET | `/api/v1/suggest` | 建议卡片 |
 | GET | `/api/v1/compare` | 本地样例商品对比 |
 | POST | `/api/v1/filter` | 解析筛选条件 |
-| GET | `/api/v1/trend/{product_id}` | 模拟趋势，非真实历史价格 |
-| POST | `/api/v1/report` | 原有报告生成，尚未实现证据检索 |
+| GET | `/api/v1/trend/{product_id}` | 未接入历史价格的明确说明，不返回时间序列 |
+| POST | `/api/v1/report` | 按样例商品ID生成证据绑定知识摘要 |
 | POST | `/api/v1/chat` | 校验回复并持久化会话的 JSON 对话 |
 | POST | `/api/v1/chat/stream` | SSE v1 五类事件，保留旧 `reply/done` 字段 |
 
@@ -34,7 +34,7 @@
 
 识别图片内容无效：422，`detail` 为中文提示；请求字段 Schema 错误仍使用 FastAPI 422 格式。
 模型读取超时：504；模型 HTTP／连接失败或输出不合格：502。响应仅包含安全提示，不返回上游响应、密钥或堆栈。
-这些模型错误同样在普通 chat/filter/report/suggest 请求中映射；已发送响应头后的失败通过 `error` + `end(success=false)` 返回（取消或连接已断开时不能保证送达），保留兼容字段 `done=true,error=中文提示`。
+这些模型错误同样在普通模型 chat/filter 请求中映射；已发送响应头后的失败通过 `error` + `end(success=false)` 返回（取消或连接已断开时不能保证送达），保留兼容字段 `done=true,error=中文提示`。
 
 `LLMClient.chat_json` 默认首次生成 + 最多 1 次格式／Schema 修复，设置范围为 0–2 次修复。
 支持完整 JSON 对象／数组以及 Markdown JSON 围栏；不使用 eval、不盲目补引号或商品字段。
@@ -492,3 +492,12 @@ SSE仍为v1，`status.node`新增 intent/requirements/completeness/clarification
 - item：id、condition（3A ConditionInput，仅budget/brand/use_case）、category（可空或耳机/运动鞋/双肩包）、confirmation_text。必须由用户明确提交。
 - shopping增加preference_ids、preference_revision、confirm_preferences；选中的品类限定偏好仅能应用到已确认同品类，不覆盖已有硬条件。状态节点新增preferences，workflow携带本次／最近应用的偏好版本与ID用于追溯，不代表这些偏好永久仍激活。
 - 本地单用户，无认证；示例、限制和恢复步骤见modules/04c-preferences-memory.md。
+
+## Phase 4D 旧接口的样例数据统一
+
+- `GET /compare` 精确匹配品类、品牌、颜色（不传代表未指定）；无匹配返回空数组，不回退全库。`filter_mode=official` 总为空并说明没有渠道证据。`similar` 仍按相同条件浏览，不自动撤销品牌。非法排序／模式、空白品类返回422；目录不可用503。
+- 返回 `products/catalog/notice/explanation`。商品 `id` 直接使用知识库ID；新增 `price_max/evidence_id/source_id/data_kind`；`price` 是样例区间下限，`rating/created_at` 为null（未知，不是0分或采集时间）。不再有真实平台、随机折扣、伪造评分。默认ID顺序，`price`按下限排序；保留`rating`输入兼容，但明确无评分证据，使用ID顺序。
+- `GET /trend/{product_id}` 对旧ID和样例ID都返回“未接入历史价格”、`confidence=0`、`history_prices=[]`；不声称ID对应的商品存在，也不做涨跌建议。
+- `POST /report` 保留请求字段，只信任`best_choice.id`或`best_choice.product_id`查到的目录事实。名称、价格和替代品等客户端信息不作为证据。未知ID422；目录不可用503。保留summary/pros/cons/recommendation，新增product_id/evidence_ids/catalog/notice；这是商品知识摘要，不是未执行排序的“最优选择”。个性化报告使用购物工作流。
+- `GET /suggest` 返回固定导航卡，不调用模型；旧type标识保留用于导航，但标题／描述不再声称全网最低或官方保障。
+- Flutter对比列表明确展示样例区间及证据；取消条件需要用户点击；空历史不画零价曲线。旧报告只显示服务端查库结果，未核验的旧reportData不再作为商品事实展示。

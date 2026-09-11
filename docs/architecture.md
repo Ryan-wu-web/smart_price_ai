@@ -200,3 +200,7 @@ Legacy新会话仍可调用原LLM路径，购物状态一旦建立后续保持�
 ## 记忆边界（Phase 4C）
 
 会话文件是当前需求／工作流的事实来源；SQLite长期偏好仅接受用户确认的结构化编辑。工作流只在确认指定偏好ID和版本时调用PreferenceStore读取，不自动保存模型推测；应用偏好仍通过原硬过滤、软排序。SQLite失败不切换事实来源，不依赖Redis/PostgreSQL存活。本地单worker，远端多用户适配尚未实现。设计取舍与验证见modules/04c-preferences-memory.md。
+
+## 旧数据链路统一（Phase 4D，取代上文旧Mock待迁移说明）
+
+旧compare → 应用生命周期内同一个ProductCatalog → 严格过滤 → 固定ID／样例区间投影；旧report → 按ID查同一个目录 → 带SHA和证据的知识摘要。删除随机MockDataSource、伪造历史生成器及不再调用的建议／趋势／报告Prompt。trend保持路径但返回明确无数据；suggest改为导航工具，不再让模型写渠道承诺。该路径不接电商、评分、销量、历史行情。

@@ -25,13 +25,15 @@ class CompareScreen extends StatefulWidget {
 }
 
 class _CompareScreenState extends State<CompareScreen> {
-  final List<String> _filters = ['综合推荐', '价格从低', '销量优先', '好评率'];
-  final List<String?> _sortByValues = [null, 'price', null, 'rating'];
+  final List<String> _filters = ['固定目录顺序', '样例区间下限从低'];
+  final List<String?> _sortByValues = [null, 'price'];
   int _selectedFilter = 0;
   List<Product> _products = [];
   bool _isLoading = true;
   String? _filterMode;
   String _filterTitle = '';
+  bool _categoryOnly = false;
+  int _loadVersion = 0;
 
   @override
   void initState() {
@@ -43,35 +45,39 @@ class _CompareScreenState extends State<CompareScreen> {
 
   void _updateFilterTitle() {
     if (_filterMode == 'official') {
-      _filterTitle = '🏪 官方旗舰店';
+      _filterTitle = '未提供官方渠道证据';
     } else if (_filterMode == 'similar') {
-      _filterTitle = '✨ 相似推荐';
+      _filterTitle = '同品类样例';
     } else {
       _filterTitle = '';
     }
   }
 
   Future<void> _loadProducts() async {
+    final version = ++_loadVersion;
     setState(() => _isLoading = true);
     try {
       final products = await ApiService().compare(
         widget.category,
-        brand: widget.brand,
-        color: widget.color,
+        brand: _categoryOnly ? null : widget.brand,
+        color: _categoryOnly ? null : widget.color,
         sortBy: _sortByValues[_selectedFilter],
         filterMode: _filterMode,
       );
-      if (!mounted) return;
+      if (!mounted || version != _loadVersion) return;
       setState(() {
         _products = products;
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (!mounted || version != _loadVersion) return;
+      setState(() {
+        _isLoading = false;
+        _products = [];
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('加载失败: $e'),
+        const SnackBar(
+          content: Text('样例商品暂时无法加载，请稍后重试。'),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
         ),
@@ -142,13 +148,14 @@ class _CompareScreenState extends State<CompareScreen> {
                       _loadProducts();
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
-                        '查看全部',
+                        '取消渠道限制',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -171,7 +178,8 @@ class _CompareScreenState extends State<CompareScreen> {
                   },
                   child: Container(
                     margin: const EdgeInsets.only(right: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected ? Constants.brandColor : Colors.white,
                       borderRadius: BorderRadius.circular(18),
@@ -184,7 +192,9 @@ class _CompareScreenState extends State<CompareScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? Colors.white : Constants.primaryTextColor,
+                        color: isSelected
+                            ? Colors.white
+                            : Constants.primaryTextColor,
                       ),
                     ),
                   ),
@@ -192,7 +202,8 @@ class _CompareScreenState extends State<CompareScreen> {
               });
               if (constraints.maxWidth > 420) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: Wrap(spacing: 10, children: tags),
                 );
               }
@@ -206,6 +217,22 @@ class _CompareScreenState extends State<CompareScreen> {
               );
             },
           ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('本地虚构样例及价格区间，不是实际报价；不提供销量、评分或官方渠道保证。'),
+          ),
+          if (!_categoryOnly)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _categoryOnly = true;
+                  _filterMode = null;
+                  _updateFilterTitle();
+                });
+                _loadProducts();
+              },
+              child: const Text('取消品牌、颜色和渠道条件，仅按品类浏览样例'),
+            ),
           const SizedBox(height: 8),
           Expanded(
             child: _isLoading
@@ -222,11 +249,12 @@ class _CompareScreenState extends State<CompareScreen> {
                             Icon(
                               Icons.search_off,
                               size: 48,
-                              color: Constants.secondaryTextColor.withOpacity(0.5),
+                              color:
+                                  Constants.secondaryTextColor.withOpacity(0.5),
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              '暂无比价结果',
+                              '没有满足当前条件的样例，未放宽条件',
                               style: TextStyle(
                                 color: Constants.secondaryTextColor,
                                 fontSize: 15,
