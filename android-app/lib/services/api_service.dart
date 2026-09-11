@@ -302,6 +302,32 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> preferences(
+      {Map<String, dynamic>? update}) async {
+    final client = http.Client();
+    try {
+      final uri = Uri.parse('$_baseUrl/api/v1/preferences');
+      final response = await (update == null
+              ? client.get(uri)
+              : client.post(uri,
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode(update)))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        throw ApiException('长期偏好暂时不可用，或版本已更新。请刷新后重新确认。');
+      }
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic> ||
+          data['revision'] is! int ||
+          data['items'] is! List) {
+        throw const FormatException('Invalid preferences');
+      }
+      return data;
+    } finally {
+      client.close();
+    }
+  }
+
   Future<Map<String, dynamic>> readShoppingSession(String sessionId) async {
     final client = http.Client();
     try {

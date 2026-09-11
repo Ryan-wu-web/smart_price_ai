@@ -7,7 +7,7 @@ from app.models.knowledge import SAMPLE_NOTICE
 from app.models.recommendations import RecommendationResponse, RankedProduct
 from app.models.requirements import ConditionInput, Intent, ItemId, RequirementModel, RequirementParseResponse, UserRequirements
 
-WorkflowNode = Literal["intent", "requirements", "completeness", "clarification", "retrieval", "filtering", "ranking", "explanation", "report", "validation"]
+WorkflowNode = Literal["preferences", "intent", "requirements", "completeness", "clarification", "retrieval", "filtering", "ranking", "explanation", "report", "validation"]
 
 
 class ShoppingInput(RequirementModel):
@@ -19,12 +19,19 @@ class ShoppingInput(RequirementModel):
     resolve_pending_ids: list[ItemId] = Field(default_factory=list, max_length=128)
     confirm_changes: bool = False
     confirm_recognition: bool = False
+    preference_ids: list[str] = Field(default_factory=list, max_length=32)
+    preference_revision: int | None = Field(default=None, ge=0)
+    confirm_preferences: bool = False
 
     @model_validator(mode="after")
     def explicit_edits(self):
         if self.remove_condition_ids or self.resolve_pending_ids:
             if not self.confirm_changes or self.expected_revision is None:
                 raise ValueError("Removing conditions requires confirmation and current revision")
+        if self.preference_ids and (not self.confirm_preferences or self.preference_revision is None):
+            raise ValueError("Applying preferences requires explicit confirmation and preference revision")
+        if len(set(self.preference_ids)) != len(self.preference_ids):
+            raise ValueError("Duplicate preference ID")
         return self
 
 
@@ -63,6 +70,8 @@ class WorkflowState(RequirementModel):
     missing_information: list[str] = Field(default_factory=list)
     trace: list[NodeTrace] = Field(default_factory=list, max_length=30)
     errors: list[WorkflowError] = Field(default_factory=list, max_length=10)
+    preference_revision: int | None = Field(default=None, ge=0)
+    preference_ids: list[str] = Field(default_factory=list, max_length=32)
     retries: int = Field(default=0, ge=0, le=2)
     notice: Literal[SAMPLE_NOTICE] = SAMPLE_NOTICE
 

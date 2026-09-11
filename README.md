@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（本地验证日期：2026-09-12）**：Phase 1A–1C基础链路、Phase 2A–2B固定样例知识／混合检索、Phase 3A–3B需求结构化与有据过滤排序已完成工程验证。Phase 4A 已将这些能力接入现有聊天接口的可选 `shopping` 模式，支持多轮确认、节点状态、证据、确定性报告和本地工作流快照；不需要模型密钥。Phase 4B 已接入Flutter聊天、条件确认、证据卡片、会话恢复和有据报告（静态检查与bundle构建通过，未真机验证）。长期偏好、旧Mock统一与Phase 5产品评测尚未完成。模型聊天和图像识别保留，真实模型、真机及产品评测指标未验证。所有商品和价格仅为本地样例，不代表实时全网比价、全网最低价或真实历史价格。详见 [4A交付记录](docs/modules/04a-shopping-workflow.md)。
+> **当前状态（本地验证日期：2026-09-12）**：Phase 1A–1C基础链路、Phase 2A–2B固定样例知识／混合检索、Phase 3A–3B需求结构化与有据过滤排序已完成工程验证。Phase 4A 已将这些能力接入现有聊天接口的可选 `shopping` 模式，支持多轮确认、节点状态、证据、确定性报告和本地工作流快照；不需要模型密钥。Phase 4B 已接入Flutter聊天、条件确认、证据卡片、会话恢复和有据报告（静态检查与bundle构建通过，未真机验证）。Phase 4C 已提供明确确认的SQLite长期偏好管理与应用；Redis/PostgreSQL仅完成评估，未接入远端存储。旧Mock统一与Phase 5产品评测尚未完成。模型聊天和图像识别保留，真实模型、真机及产品评测指标未验证。所有商品和价格仅为本地样例，不代表实时全网比价、全网最低价或真实历史价格。详见 [4A交付记录](docs/modules/04a-shopping-workflow.md)。
 
 ---
 
@@ -125,7 +125,7 @@ VOLCENGINE_API_KEY=your-api-key-here
 VOLCENGINE_ENDPOINT=https://ark.cn-beijing.volces.com/api/v3/chat/completions
 VOLCENGINE_MODEL=ep-xxxxxxxxxxxxx
 
-# 数据库配置（可选；当前主流程未接入数据库）
+# 数据库配置（可选；长期偏好使用独立本地SQLite，DATABASE_URL尚不控制主链路）
 DATABASE_URL=sqlite:///./smartprice.db
 
 # 调试模式
@@ -140,7 +140,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 服务启动后访问 http://localhost:8000/docs 查看 Swagger API 文档。
 
 本地基础功能不要求 Redis 或 PostgreSQL 已启动；当前它们未进入主链路。
-没有模型配置时 `/health`、`/api/v1/knowledge/*`、`/api/v1/requirements/parse` 和 `/api/v1/recommendations` 本地接口可用，但真实识别／对话不可用。
+没有模型配置时 `/health`、`/api/v1/knowledge/*`、`/api/v1/requirements/parse` 、`/api/v1/recommendations`、`/api/v1/preferences` 及聊天的显式shopping模式可用，但真实识别／旧模型对话不可用。
 连接池及 JSON 修复参数见 `backend/.env.example` 和 [API 说明](docs/api.md)。
 已验证隔离 ASGI 接口、离线模型桩，以及本地 Uvicorn 启动／健康接口／OpenAPI；没有执行真实模型、真机或 Docker 构建。
 
@@ -335,3 +335,7 @@ MIT License © 2025 Smart Price
 ```
 
 继续同一会话发送“解释推荐”“对比候选”“生成报告”。响应 `action_data.workflow` 带需求版本、候选、证据、分项与报告；未知句子会追问，不会静默忽略或放宽硬条件。识别品类必须确认，不把识别价格当真实报价。详见 [API](docs/api.md) 与 [模块状态](docs/modules/README.md)。
+
+### 长期偏好（Phase 4C）
+
+聊天页右上菜单 → 查看／修改长期偏好 → 添加并明确确认 → 勾选后应用到当前会话。已确认的当前硬条件不被覆盖，冲突继续追问。删除长期偏好不会自动撤销会话里的已确认条件。默认SQLite位于backend/data/preferences.sqlite3，按需设置PREFERENCE_SQLITE_PATH；无需Redis/PostgreSQL。详见[4C记录](docs/modules/04c-preferences-memory.md)。

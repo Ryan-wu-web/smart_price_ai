@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
     debug: bool = False
     database_url: str = ""
     redis_url: str = ""
+    preference_sqlite_path: str = str(Path(__file__).resolve().parents[1] / "data" / "preferences.sqlite3")
     volcengine_api_key: str = ""
     volcengine_endpoint: str = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
     volcengine_model: str = ""

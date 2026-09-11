@@ -11,6 +11,7 @@ import '../utils/constants.dart';
 import '../widgets/bottom_input_bar.dart';
 import '../widgets/animated_chat_bubble.dart';
 import 'report_screen.dart';
+import 'preferences_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialMessage;
@@ -351,6 +352,16 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _openPreferences() async {
+    final options = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => PreferencesScreen(decision: _decision)));
+    if (options != null && mounted) {
+      await _sendMessage('应用已确认的长期偏好', shopping: options);
+    }
+  }
+
   void _openGroundedReport(ShoppingDecision decision) {
     Navigator.push(
         context,
@@ -649,16 +660,28 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
-          IconButton(
-              tooltip: '刷新已保存会话',
-              onPressed: _isLoading || _sessionId == null
-                  ? null
-                  : () => _refreshSession(),
-              icon: const Icon(Icons.refresh)),
-          IconButton(
-              tooltip: '新建购物会话（保留原历史）',
-              onPressed: _isLoading ? null : _newSession,
-              icon: const Icon(Icons.add_comment_outlined)),
+          PopupMenuButton<String>(
+            tooltip: '会话与长期偏好',
+            enabled: !_isLoading,
+            onSelected: (value) {
+              if (value == 'preferences') {
+                _openPreferences();
+              } else if (value == 'refresh') {
+                _refreshSession();
+              } else {
+                _newSession();
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                  value: 'preferences', child: Text('查看／修改长期偏好')),
+              PopupMenuItem(
+                  value: 'refresh',
+                  enabled: _sessionId != null,
+                  child: const Text('刷新已保存会话')),
+              const PopupMenuItem(value: 'new', child: Text('新建会话（保留历史）')),
+            ],
+          ),
           TextButton.icon(
             onPressed: _isLoading ? null : () => _sendMessage('生成报告'),
             icon: const Icon(Icons.assignment,

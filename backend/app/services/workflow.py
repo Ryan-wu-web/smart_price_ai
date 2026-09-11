@@ -12,9 +12,11 @@ from app.models.workflow import DecisionReport, NodeTrace, ShoppingInput, Workfl
 from app.services.recommendations import ProductRecommender
 from app.services.requirements import RequirementParser, RequirementUpdateError
 from app.services.sessions import SessionError
+from app.services.preferences import PreferenceStore
 
 logger = logging.getLogger(__name__)
 NODE_MESSAGES = {
+    "preferences": "正在读取你已确认应用的长期偏好",
     "intent": "正在识别购物意图", "requirements": "正在解析需求", "completeness": "正在检查信息完整度",
     "clarification": "需要补充信息或确认条件", "retrieval": "正在检索本地样例商品",
     "filtering": "正在执行硬条件过滤", "ranking": "正在计算偏好分项得分",
@@ -106,6 +108,23 @@ class ShoppingWorkflow:
             if message == RECOGNITION_MESSAGE:
                 parse_message = ""
                 intent = intent or ("recommend" if requirements.intent == "unknown" else None)
+        if options.preference_ids:
+            yield "status", status("preferences")
+            profile = await asyncio.to_thread(PreferenceStore().read)
+            if profile.revision != options.preference_revision:
+                raise SessionError("长期偏好已更新，请先刷新偏好再确认应用。", "PREFERENCE_REVISION_CONFLICT", 409)
+            selected = [item for item in profile.items if item.id in options.preference_ids]
+            if len(selected) != len(options.preference_ids):
+                raise SessionError("部分偏好已不存在，请刷新后重新选择。", "PREFERENCE_NOT_FOUND", 422)
+            categories = {c.value for c in requirements.conditions if c.removed_turn is None and c.id not in options.remove_condition_ids and c.field == "category" and c.operator == "eq" and c.strength == "hard"}
+            categories.update(c.value for c in additions if c.field == "category" and c.operator == "eq" and c.strength == "hard")
+            if any(item.category is not None and categories != {item.category} for item in selected):
+                raise SessionError("请先确认本轮品类，再应用同品类长期偏好；不会跨品类套用预算。", "PREFERENCE_CATEGORY_MISMATCH", 422)
+            additions.extend(item.condition for item in selected)
+            if len(additions) > 32:
+                raise SessionError("本轮新增条件过多，请分次应用偏好。", "PREFERENCE_CAPACITY", 422)
+            if message == "应用已确认的长期偏好":
+                parse_message = ""
         yield "status", status("requirements")
         try:
             assessment = RequirementParser().parse(RequirementParseRequest(
@@ -118,7 +137,9 @@ class ShoppingWorkflow:
         yield "status", status("completeness")
         data = dict(session_id=session_id, requirements=requirements, assessment=assessment,
                     recognized_product=recognized, recognition_confirmed=confirmed,
-                    status=assessment.status, missing_information=assessment.missing_information)
+                    status=assessment.status, missing_information=assessment.missing_information,
+                    preference_revision=options.preference_revision if options.preference_ids else (previous.preference_revision if previous else None),
+                    preference_ids=options.preference_ids if options.preference_ids else (previous.preference_ids if previous else []))
         if assessment.status != "ready":
             yield "status", status("clarification")
         else:

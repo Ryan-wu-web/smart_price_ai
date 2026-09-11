@@ -484,3 +484,11 @@ SSE仍为v1，`status.node`新增 intent/requirements/completeness/clarification
 ### Flutter 接入约定（4B）
 
 购物页要求最终 `action_data.workflow`；缺失时提示后端版本不支持，不回退到无据模型推荐。会话恢复使用 `GET /api/v1/chat/sessions/{session_id}`。条件撤销和pending忽略需要确认与revision；报告发送“生成报告”，显示同一workflow内的report。历史快照不可修改。
+
+## 长期偏好 API（Phase 4C）
+
+- `GET /api/v1/preferences`：返回version、revision、items、storage=local_sqlite、notice。
+- `POST /api/v1/preferences`：`expected_revision`＋严格布尔`confirmed:true`＋完整`items`；空数组为确认删除全部，修改或删除任意项都是完整替换。冲突409、无效422、存储不可用503。最多32项。
+- item：id、condition（3A ConditionInput，仅budget/brand/use_case）、category（可空或耳机/运动鞋/双肩包）、confirmation_text。必须由用户明确提交。
+- shopping增加preference_ids、preference_revision、confirm_preferences；选中的品类限定偏好仅能应用到已确认同品类，不覆盖已有硬条件。状态节点新增preferences，workflow携带本次／最近应用的偏好版本与ID用于追溯，不代表这些偏好永久仍激活。
+- 本地单用户，无认证；示例、限制和恢复步骤见modules/04c-preferences-memory.md。

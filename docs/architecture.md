@@ -196,3 +196,7 @@ Legacy新会话仍可调用原LLM路径，购物状态一旦建立后续保持�
 ## Flutter 购物链路（Phase 4B）
 
 聊天页显式发送shopping并按本机最新revision更新；用户确认条件撤销后发送confirm_changes和expected_revision。GET会话恢复只读，失败不重发POST。报告直接呈现workflow.report，不调用旧report接口。客户端再次核验硬检查／商品证据归属／报告快照一致性，详情见modules/04b-flutter-shopping.md。
+
+## 记忆边界（Phase 4C）
+
+会话文件是当前需求／工作流的事实来源；SQLite长期偏好仅接受用户确认的结构化编辑。工作流只在确认指定偏好ID和版本时调用PreferenceStore读取，不自动保存模型推测；应用偏好仍通过原硬过滤、软排序。SQLite失败不切换事实来源，不依赖Redis/PostgreSQL存活。本地单worker，远端多用户适配尚未实现。设计取舍与验证见modules/04c-preferences-memory.md。

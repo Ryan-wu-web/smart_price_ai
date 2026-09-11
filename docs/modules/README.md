@@ -31,3 +31,7 @@
 ## Phase 4B 客户端
 
 Flutter聊天现在显式进入购物工作流，支持确认编辑、证据展示、刷新／恢复会话、有据报告查看与导出。底层保持旧SSE兼容。实现与验证边界见 [4B记录](04b-flutter-shopping.md)。
+
+## Phase 4C 长期偏好
+
+已实现明确确认的本地SQLite偏好管理、工作流应用工具与Flutter管理页面。Redis/PostgreSQL完成接入评估但未实现远端适配，默认本地模式无外部服务依赖。详见 [4C记录](04c-preferences-memory.md)。
