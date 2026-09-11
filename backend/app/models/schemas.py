@@ -1,7 +1,8 @@
 from datetime import datetime
+import math
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class RecognizeRequest(BaseModel):
@@ -9,9 +10,11 @@ class RecognizeRequest(BaseModel):
 
 
 class RecognizeResponse(BaseModel):
-    name: str = Field(..., description="商品名称")
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(..., min_length=1, description="商品名称")
     brand: str = Field(default="", description="品牌")
-    category: str = Field(..., description="品类")
+    category: str = Field(..., min_length=1, description="品类")
     color: str = Field(default="", description="颜色")
     material: str = Field(default="", description="材质")
     style: str = Field(default="", description="款式")
@@ -101,12 +104,42 @@ class ChatResponse(BaseModel):
     session_id: str
 
 
+class ImageCenter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    x: float = Field(ge=0, le=1, allow_inf_nan=False, strict=True)
+    y: float = Field(ge=0, le=1, allow_inf_nan=False, strict=True)
+
+
 class RecognizedObject(BaseModel):
-    name: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=1)
     brand: str = ""
-    category: str
+    category: str = Field(min_length=1)
     color: str = ""
-    center: dict[str, float] = Field(default_factory=dict)
+    center: ImageCenter
+
+    @model_validator(mode="before")
+    @classmethod
+    def legacy_bbox(cls, value):
+        """Accept legacy normalized x/y/w/h boxes, never invent a (0, 0) point."""
+        if not isinstance(value, dict) or "center" in value or "bbox" not in value:
+            return value
+        bbox = value["bbox"]
+        if isinstance(bbox, dict) and all(k in bbox for k in ("x", "y", "w", "h")):
+            coords = [bbox[k] for k in ("x", "y", "w", "h")]
+        elif isinstance(bbox, list) and len(bbox) == 4:
+            coords = bbox
+        else:
+            raise ValueError("bbox requires x, y, w, h")
+        if any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1 for v in coords):
+            raise ValueError("bbox must use finite normalized coordinates")
+        x, y, w, h = coords
+        if x + w > 1 or y + h > 1:
+            raise ValueError("bbox exceeds image bounds")
+        return {**value, "center": {"x": x + w / 2, "y": y + h / 2}}
+
 
 
 class RecognizeMultiResponse(BaseModel):

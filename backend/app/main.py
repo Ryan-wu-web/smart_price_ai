@@ -1,13 +1,24 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.core.base_api_client import create_http_client
 from app.middleware.error_handler import global_exception_handler
 from app.routers import recognize, suggest, compare, filter, trend, report, chat
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # One pool per app/worker; no import-time sockets or global cross-loop client.
+    async with create_http_client() as client:
+        app.state.model_http = client
+        yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description="AI 拍照识物与智能比价购物助手",
     version="1.0.0",

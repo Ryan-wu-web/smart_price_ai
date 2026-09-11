@@ -1,116 +1,121 @@
 import base64
+import binascii
 import hashlib
 import io
 import json
+import logging
 import os
+from pathlib import Path
+import tempfile
 import time
 
-from PIL import Image
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pydantic import ValidationError
 
+from app.config import settings
+from app.core.base_api_client import ModelOutputError
 from app.core.llm_client import LLMClient
 from app.core.prompt_engine import PromptEngine
 from app.core.vlm_client import VLMClient
 from app.models.schemas import RecognizeResponse, RecognizedObject, RecognizeMultiResponse
 
+logger = logging.getLogger(__name__)
 MAX_IMAGE_WIDTH = 600
+MAX_IMAGE_PIXELS = 20_000_000
 JPEG_QUALITY = 75
 CACHE_DIR = "data/cache/recognition"
-CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 天
+CACHE_TTL_SECONDS = 7 * 24 * 3600
+# Bump when prompts, output schemas or preprocessing semantics change.
+CACHE_VERSION = "recognition-v2"
+
+
+class InvalidImageError(ValueError):
+    pass
 
 
 class RecognitionService:
-    def __init__(
-        self,
-        vlm_client: VLMClient | None = None,
-        llm_client: LLMClient | None = None,
-    ):
+    def __init__(self, vlm_client: VLMClient | None = None, llm_client: LLMClient | None = None):
         self.vlm_client = vlm_client or VLMClient()
         self.llm_client = llm_client or LLMClient()
 
     @staticmethod
-    def _perceptual_hash(image_base64: str) -> str:
-        """
-        差值哈希 dHash：对图片进行 8x8 灰度采样后，比较相邻像素亮度差异。
-        对微小像素变化（重新拍照、光照差异、JPEG 压缩差异）有良好容忍度。
-        """
+    def _decode_image(image_base64: str) -> bytes:
         try:
-            raw = base64.b64decode(image_base64)
-            img = Image.open(io.BytesIO(raw)).convert("L").resize((9, 8), Image.LANCZOS)
-            diff = []
-            for row in range(8):
-                for col in range(8):
-                    left = img.getpixel((col, row))
-                    right = img.getpixel((col + 1, row))
-                    diff.append("1" if left > right else "0")
-            return "".join(diff)
-        except Exception:
-            # 感知哈希失败时回退到 MD5（兜底，保证不崩溃）
-            return hashlib.md5(image_base64.encode("utf-8")).hexdigest()
+            return base64.b64decode(image_base64, validate=True)
+        except (binascii.Error, ValueError):
+            raise InvalidImageError("图片编码无效，请重新选择或拍摄图片。") from None
+
+    def _cache_key(self, raw: bytes, mode: str) -> str:
+        # Do not use dHash: different images (e.g. solid black/white) can collide.
+        # Hash original bytes, not lossy JPEG output, to avoid compression aliases.
+        identity = json.dumps([
+            CACHE_VERSION, mode, settings.volcengine_model,
+            self.llm_client.endpoint, getattr(self.vlm_client, "endpoint", ""),
+            MAX_IMAGE_WIDTH, JPEG_QUALITY, hashlib.sha256(raw).hexdigest(),
+        ], ensure_ascii=False)
+        return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
     @staticmethod
-    def _load_from_cache(cache_key: str) -> RecognizeResponse | None:
+    def _load_from_cache(cache_key: str, mode: str):
         try:
-            path = os.path.join(CACHE_DIR, f"{cache_key}.json")
-            if not os.path.exists(path):
+            data = json.loads((Path(CACHE_DIR) / f"{cache_key}.json").read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or data.get("version") != CACHE_VERSION or data.get("mode") != mode:
                 return None
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if time.time() - data.get("timestamp", 0) > CACHE_TTL_SECONDS:
-                os.remove(path)
+            timestamp = data["timestamp"]
+            if type(timestamp) not in (int, float) or not 0 <= time.time() - timestamp <= CACHE_TTL_SECONDS:
                 return None
-            return RecognizeResponse(**data["result"])
-        except Exception:
+            schema = RecognizeResponse if mode == "single" else RecognizeMultiResponse
+            return schema.model_validate(data["result"])
+        except (OSError, ValueError, KeyError, TypeError, ValidationError):
             return None
 
     @staticmethod
-    def _save_to_cache(cache_key: str, result: RecognizeResponse) -> None:
+    def _save_to_cache(cache_key: str, mode: str, result) -> None:
+        temporary = None
         try:
-            os.makedirs(CACHE_DIR, exist_ok=True)
-            path = os.path.join(CACHE_DIR, f"{cache_key}.json")
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(
-                    {"timestamp": time.time(), "result": result.model_dump()},
-                    f,
-                    ensure_ascii=False,
-                )
-        except Exception:
-            pass
+            directory = Path(CACHE_DIR)
+            directory.mkdir(parents=True, exist_ok=True)
+            # Same directory ensures atomic replacement; readers never see partial JSON.
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=directory, suffix=".tmp", delete=False) as handle:
+                temporary = Path(handle.name)
+                json.dump({"version": CACHE_VERSION, "mode": mode, "timestamp": time.time(),
+                           "result": result.model_dump()}, handle, ensure_ascii=False, allow_nan=False)
+            os.replace(temporary, directory / f"{cache_key}.json")
+        except (OSError, ValueError):
+            # Cache failure is not an identification failure. Do not log image data.
+            logger.warning("recognition_cache_write_failed mode=%s", mode)
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("recognition_cache_temp_cleanup_failed")
 
     @staticmethod
     def _compress_image(image_base64: str) -> str:
-        """将图片压缩到最大宽度 MAX_IMAGE_WIDTH，返回新的 base64。"""
+        raw = RecognitionService._decode_image(image_base64)
         try:
-            raw = base64.b64decode(image_base64)
-            img = Image.open(io.BytesIO(raw))
-            # 转换为 RGB（去除透明通道）
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
-            w, h = img.size
-            if w > MAX_IMAGE_WIDTH:
-                ratio = MAX_IMAGE_WIDTH / w
-                new_size = (MAX_IMAGE_WIDTH, int(h * ratio))
-                img = img.resize(new_size, Image.LANCZOS)
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
-            return base64.b64encode(buffer.getvalue()).decode("utf-8")
-        except Exception:
-            # 压缩失败时返回原图
-            return image_base64
+            with Image.open(io.BytesIO(raw)) as source:
+                if source.width * source.height > MAX_IMAGE_PIXELS:
+                    raise InvalidImageError("图片尺寸过大，请缩小后重试。")
+                # Honor phone orientation before removing EXIF and converting to JPEG.
+                img = ImageOps.exif_transpose(source).convert("RGB")
+                img.thumbnail((MAX_IMAGE_WIDTH, MAX_IMAGE_WIDTH), Image.Resampling.LANCZOS)
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+                return base64.b64encode(buffer.getvalue()).decode("ascii")
+        except InvalidImageError:
+            raise
+        except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError):
+            raise InvalidImageError("无法读取图片，请使用有效的照片重试。") from None
 
     async def recognize(self, image_base64: str) -> RecognizeResponse:
-        """单次调用主路径，失败时 fallback 到两阶段。"""
-        # 1. 先压缩图片（标准化尺寸、去除 EXIF 元数据）
+        cache_key = self._cache_key(self._decode_image(image_base64), "single")
         image_base64 = self._compress_image(image_base64)
-
-        # 2. 计算感知哈希作为缓存 key
-        cache_key = self._perceptual_hash(image_base64)
-
-        # 3. 检查缓存（查/存使用同一 key）
-        cached = self._load_from_cache(cache_key)
-        if cached:
+        cached = self._load_from_cache(cache_key, "single")
+        if cached is not None:
             return cached
 
-        # 4. 主路径：直接调用 LLM，传入图片 + 识别 Prompt
         prompt = (
             "你是一位专业的商品识别专家。请观察图片中的商品，"
             "直接以 JSON 格式输出：name（商品名称）、brand（品牌，未知为空字符串）、"
@@ -133,57 +138,26 @@ class RecognitionService:
         ]
 
         try:
-            result = await self.llm_client.chat_json(messages, temperature=0.3)
-            parsed = self._parse_recognize_result(result)
-            self._save_to_cache(cache_key, parsed)
-            return parsed
-        except Exception:
-            # Fallback：两阶段识别
+            parsed = await self.llm_client.chat_json(messages, temperature=0.3, response_model=RecognizeResponse)
+        except ModelOutputError:
+            # Preserve the original two-stage fallback only for invalid model output.
+            # Timeouts/auth/network failures must not trigger extra expensive calls.
+            logger.warning("recognition_two_stage_fallback reason=model_output_invalid")
             parsed = await self._recognize_two_stage(image_base64)
-            self._save_to_cache(cache_key, parsed)
-            return parsed
+        self._save_to_cache(cache_key, "single", parsed)
+        return parsed
 
     async def _recognize_two_stage(self, image_base64: str) -> RecognizeResponse:
-        """原始两阶段识别作为 fallback。"""
         description = await self.vlm_client.describe_image(image_base64)
-        prompt = PromptEngine.recognize(description)
-        messages = [{"role": "user", "content": prompt}]
-        result = await self.llm_client.chat_json(messages, temperature=0.3)
-        return self._parse_recognize_result(result)
-
-    def _parse_recognize_result(self, result: dict) -> RecognizeResponse:
-        return RecognizeResponse(
-            name=result.get("name", ""),
-            brand=result.get("brand", ""),
-            category=result.get("category", ""),
-            color=result.get("color", ""),
-            material=result.get("material", ""),
-            style=result.get("style", ""),
-        )
+        messages = [{"role": "user", "content": PromptEngine.recognize(description)}]
+        return await self.llm_client.chat_json(messages, temperature=0.3, response_model=RecognizeResponse)
 
     async def recognize_multiple(self, image_base64: str) -> RecognizeMultiResponse:
-        """多目标识别：识别图中所有商品，返回每个商品的大致中心点。"""
-        # 1. 先压缩图片
+        cache_key = self._cache_key(self._decode_image(image_base64), "multi")
         image_base64 = self._compress_image(image_base64)
-
-        # 2. 计算感知哈希作为缓存 key
-        cache_key = self._perceptual_hash(image_base64)
-
-        # 3. 检查缓存
-        cached = self._load_from_cache(cache_key)
-        if cached:
-            # 单目标缓存命中时，包装为单对象的 multi 响应
-            return RecognizeMultiResponse(
-                objects=[
-                    RecognizedObject(
-                        name=cached.name,
-                        brand=cached.brand,
-                        category=cached.category,
-                        color=cached.color,
-                        center={},
-                    )
-                ]
-            )
+        cached = self._load_from_cache(cache_key, "multi")
+        if cached is not None:
+            return cached
 
         prompt = (
             "你是一位专业的商品识别专家。请观察图片，识别图中所有独立的商品。\n"
@@ -211,46 +185,7 @@ class RecognitionService:
             }
         ]
 
-        try:
-            result = await self.llm_client.chat_json(messages, temperature=0.3)
-            if not isinstance(result, list):
-                return RecognizeMultiResponse(objects=[])
-
-            objects = []
-            for item in result:
-                if not isinstance(item, dict):
-                    continue
-                center = self._extract_center(item)
-                objects.append(
-                    RecognizedObject(
-                        name=item.get("name", "未知商品"),
-                        brand=item.get("brand", ""),
-                        category=item.get("category", "未知"),
-                        color=item.get("color", ""),
-                        center=center,
-                    )
-                )
-            return RecognizeMultiResponse(objects=objects)
-        except Exception:
-            return RecognizeMultiResponse(objects=[])
-
-    @staticmethod
-    def _extract_center(item: dict) -> dict[str, float]:
-        """从 LLM 返回中提取中心点，兼容 center 和旧版 bbox 格式。"""
-        center = item.get("center", {})
-        if isinstance(center, dict) and "x" in center and "y" in center:
-            return {"x": float(center["x"]), "y": float(center["y"])}
-
-        # 兼容旧版 bbox：如果 LLM 返回了 bbox，计算其中心点
-        bbox = item.get("bbox", {})
-        if isinstance(bbox, list) and len(bbox) >= 4:
-            x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
-            return {"x": float(x) + float(w) / 2, "y": float(y) + float(h) / 2}
-        if isinstance(bbox, dict):
-            x = float(bbox.get("x", 0))
-            y = float(bbox.get("y", 0))
-            w = float(bbox.get("w", 0))
-            h = float(bbox.get("h", 0))
-            return {"x": x + w / 2, "y": y + h / 2}
-
-        return {}
+        objects = await self.llm_client.chat_json(messages, temperature=0.3, response_model=list[RecognizedObject])
+        result = RecognizeMultiResponse(objects=objects)
+        self._save_to_cache(cache_key, "multi", result)
+        return result

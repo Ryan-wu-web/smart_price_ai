@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（2026-09-11）**：已完成升级前代码整理，尚未实施 Phase 1–5。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。本文功能说明不是本轮真机／模型验证结果；升级目标和历史性能描述不能作为实测指标。
+> **当前状态（2026-09-11）**：已完成升级前代码整理及 Phase 1A（识别缓存、模型解析、HTTP 生命周期），通过离线工程检查。Phase 1 的会话／SSE 修复及 Phase 2–5 尚未完成。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。本文功能说明不是本轮真机／模型验证结果；升级目标和历史性能描述不能作为实测指标。
 
 ---
 
@@ -41,13 +41,14 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 - 前端：HTTP SSE 客户端逐行解析，字符级追加渲染
 - 支持决策卡片动态生成（对比分析 / 购买指南 / AI 决策报告）
 
-### 3️⃣ 感知哈希缓存优化（dHash）
+### 3️⃣ 单／多目标隔离的精确缓存
 
-针对"同一商品重新拍照"场景，采用 **dHash 差值感知哈希**替代 MD5，配合图片压缩预处理，实现：
+缓存使用**原始图片字节 SHA-256 + 任务模式 + 模型／端点 + 版本**，不再用 dHash 判断图片相同，避免不同图片误命中。
 
-- 缓存命中时可跳过视觉模型请求，具体耗时需在固定环境下测量
-- 图片压缩（600px / JPEG 75%）用于降低上传体积
-- 单／多目标缓存隔离和应用级 HTTP 连接池生命周期将在 Phase 1 修复
+- 单目标与多目标分别校验、原子写入，TTL 为 7 天；旧缓存自然忽略，不批量删除。
+- 图片按 EXIF 方向旋转，转为 RGB，最长边缩至 600px，JPEG 质量 75%。
+- 应用级 HTTP 连接池由 FastAPI lifespan 创建与关闭；缓存命中无需模型请求。
+- 精确缓存不保证重新拍照或重新编码后命中；正确性优先于近似命中率。
 
 ### 4️⃣ 完整的 AI 任务编排体系
 
@@ -59,7 +60,7 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 | 智能导购 | 多轮对话 + 意图识别 | 决策卡片（对比/指南/报告）|
 | 决策报告 | 上下文聚合 + 结构化生成 | 最优选择 + 购买建议 |
 
-现有 Prompt 要求模型返回 JSON，并有部分容错回退；严格输出 Schema 校验、有限重试与统一异常事件尚待 Phase 1 实施。
+Phase 1A 已为识别输出接入 Pydantic Schema，通用 JSON 解析支持有限修复并保留对象／数组兼容性。对话和其他业务专用 Schema、摘要修复及统一 SSE 异常事件仍待后续模块实施。
 
 ---
 
@@ -67,7 +68,7 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 
 ![系统架构图](assets/system-architecture.png)
 
-> 当前审计与整理记录见 [`docs/modules/00-cleanup.md`](docs/modules/00-cleanup.md)；独立架构文档将在升级阶段补齐。
+> 当前实现边界见 [架构说明](docs/architecture.md)、[API 说明](docs/api.md) 和 [Phase 1A 交付记录](docs/modules/01a-recognition-foundation.md)。
 
 ---
 
@@ -136,6 +137,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 服务启动后访问 http://localhost:8000/docs 查看 Swagger API 文档。
 
+本地基础功能不要求 Redis 或 PostgreSQL 已启动；当前它们未进入主链路。
+没有模型配置时 `/health` 和本地样例商品接口可用，但真实识别／对话不可用。
+连接池及 JSON 修复参数见 `backend/.env.example` 和 [API 说明](docs/api.md)。
+本轮只验证了隔离 ASGI 接口与离线模型桩，没有执行真实模型、真机或 Docker 构建。
+
 ### 3. 启动前端（真机调试）
 
 ```bash
@@ -167,6 +173,9 @@ flutter run
 |------|------|
 | [`docs/modules/README.md`](docs/modules/README.md) | 模块交付记录索引与记录规范 |
 | [`docs/modules/00-cleanup.md`](docs/modules/00-cleanup.md) | 升级前清理范围、验证、回退与后续边界 |
+| [`docs/modules/01a-recognition-foundation.md`](docs/modules/01a-recognition-foundation.md) | Phase 1A 实际改动、离线结果与复现方式 |
+| [`docs/api.md`](docs/api.md) | 现有接口、识别字段及错误约定 |
+| [`docs/architecture.md`](docs/architecture.md) | 当前运行链路与尚未完成的架构部分 |
 
 ---
 
@@ -187,8 +196,8 @@ flutter run
 |------|------|
 | FastAPI | RESTful API 框架 |
 | 内存／本地 JSON 文件 | 当前识别缓存与会话存储；SQLAlchemy 数据模型尚未接入主流程 |
-| httpx | 异步 HTTP 请求；应用级客户端复用与关闭待完善 |
-| Pillow | 图片压缩与 dHash 感知哈希计算 |
+| httpx | 应用级异步连接池、分项超时与生命周期关闭 |
+| Pillow | 图片校验、方向修正与压缩 |
 | 火山引擎 Doubao | VLM 图像识别 + LLM 对话生成 |
 
 ---
@@ -201,7 +210,7 @@ flutter run
 
 **Q2：拍照后识别超时？**
 
-首次识别需要调用 VLM API，请确保模型配置有效。响应时间取决于网络、模型和输入图片；相似图片可能命中缓存，但不保证二次拍照必然命中。
+首次识别需要调用 VLM API，请确保模型配置有效。响应时间取决于网络、模型和输入图片；仅原始图片字节及模式／模型版本一致时复用精确缓存；重新拍照不保证命中。
 
 **Q3：Flutter 编译报错？**
 

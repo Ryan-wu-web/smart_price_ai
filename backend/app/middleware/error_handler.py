@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -8,10 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.error(
-        f"Unhandled exception at {request.method} {request.url.path}: {exc}\n"
-        f"{traceback.format_exc()}"
-    )
+    # Never log request bodies, provider envelopes or exception text.
+    logger.error("unhandled_error method=%s type=%s", request.method, type(exc).__name__)
     return JSONResponse(
         status_code=500,
         content={

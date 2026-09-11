@@ -1,12 +1,7 @@
-from typing import Optional
-
 from app.core.base_api_client import BaseAPIClient
 
 
 class VLMClient(BaseAPIClient):
-    def __init__(self, api_key: Optional[str] = None, endpoint: Optional[str] = None):
-        super().__init__(api_key=api_key, endpoint=endpoint)
-
     async def describe_image(
         self,
         image_base64: str,
@@ -49,5 +44,4 @@ class VLMClient(BaseAPIClient):
                 ],
             }
         ]
-        data = await self._post(messages, temperature, max_tokens)
-        return data["choices"][0]["message"]["content"]
+        return await self.chat(messages, temperature, max_tokens)
