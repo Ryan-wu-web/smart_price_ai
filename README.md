@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2B 已实现可追溯混合检索（BM25＋字符TF-IDF、融合及重排），但不是预训练语义Embedding，也不是完整推荐链路。Phase 3–5 尚未完成，其他业务 Schema 将随相应模块收紧。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
+> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2B 已实现可追溯混合检索（BM25＋字符TF-IDF、融合及重排），但不是预训练语义Embedding，也不是完整推荐链路。Phase 3A 已提供结构化需求与显式增量编辑接口（保守规则解析，无模型调用），尚未接入聊天／Flutter；Phase 3B 的硬过滤／软偏好排序及 Phase 4–5 尚未完成。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
 
 ---
 
@@ -193,6 +193,31 @@ $result.warnings
 尚未接入Flutter和聊天，未完成预算／功能硬约束与购物偏好排序；不能把检索命中直接当购买建议。
 详见 [检索API](docs/api.md#样例知识混合检索phase-2b) 和 [2B交付记录](docs/modules/02b-hybrid-retrieval.md)。
 
+### 解析并持续补充购物需求（Phase 3A）
+
+无需模型密钥或数据库。后端启动后，在 PowerShell 执行：
+
+```powershell
+$body = @{ message = '推荐耳机，预算不超过500元，必须主动降噪，偏好品牌样例声屿，用于通勤' } | ConvertTo-Json
+$requirements = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/v1/requirements/parse' `
+  -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+$requirements.hard_constraints | Select-Object id, field, key, operator, value
+$requirements.soft_preferences | Select-Object field, value
+
+# 客户端把上一轮完整 state 带回；本接口不读取旧聊天历史，也不持久化偏好。
+$body = @{ message = '不要品牌样例听岚'; previous = $requirements.state } | ConvertTo-Json -Depth 20
+$requirements = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/v1/requirements/parse' `
+  -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
+$requirements.status
+$requirements.questions
+```
+
+规则只接受能完整识别的分句；复杂表达、模糊预算和更正语句进入 `state.pending`，不猜测条件。
+`ready` 仅表示基础购物信息齐备，不代表有符合条件的商品，更不是已经推荐成功。
+同一字段硬条件按交集保留；“预算800元”不会覆盖之前的500元上限。撤销或解决待确认项必须显式确认并提交相应ID。
+品牌、用途和一般功能默认软偏好，明确“必须”才是硬要求；预算和品类默认硬条件，排斥条件也是硬条件。
+详细语法、Schema、编辑示例、限制见 [需求API](docs/api.md#结构化需求与增量编辑phase-3a) 和 [3A交付记录](docs/modules/03a-structured-requirements.md)。
+
 ### 3. 启动前端（真机调试）
 
 ```bash
@@ -228,6 +253,7 @@ flutter run
 | [`docs/modules/01a-recognition-foundation.md`](docs/modules/01a-recognition-foundation.md) | Phase 1A 实际改动、离线结果与复现方式 |
 | [`docs/modules/01b-conversation-context.md`](docs/modules/01b-conversation-context.md) | Phase 1B 会话、摘要、识别上下文与实际验证 |
 | [`docs/modules/01c-streaming-protocol.md`](docs/modules/01c-streaming-protocol.md) | Phase 1C SSE 协议、客户端消费与实际验证 |
+| [`docs/modules/03a-structured-requirements.md`](docs/modules/03a-structured-requirements.md) | Phase 3A 需求结构化、增量确认与真实验证 |
 | [`docs/api.md`](docs/api.md) | 现有接口、识别字段及错误约定 |
 | [`docs/architecture.md`](docs/architecture.md) | 当前运行链路与尚未完成的架构部分 |
 

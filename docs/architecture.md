@@ -1,4 +1,4 @@
-# 当前架构：Phase 1A–1C 与 Phase 2A
+# 当前架构：Phase 1A–1C、Phase 2A–2B 与 Phase 3A
 
 更新：2026-09-11。本文区分当前可验证实现和后续目标，不将目标架构写成现状。
 
@@ -127,6 +127,26 @@ POST knowledge/search → SearchRequest校验
 索引异常只影响搜索；日志记录模式、计数、指纹和异常类型，不记录查询文本／商品全文／原始异常。
 没有新依赖、模型下载、数据库服务或Docker COPY变更。旧聊天、比价、报告及Flutter尚未消费此索引，不能宣称端到端有据推荐。
 
+## 结构化短期需求（Phase 3A）
+
+```text
+POST requirements/parse（独立于旧聊天）
+  → RequirementParseRequest：完整previous状态＋消息／显式编辑，严格Schema
+  → 脱离输入的状态副本，校验撤销／待确认ID及用户确认标记
+  → 按分句完整匹配规则；不支持的表达保留pending，不调用模型
+  → 追加结构化硬条件／软偏好；保留来源、轮次和已撤销记录
+  → 硬条件冲突检查＋基础购物信息完整度判断
+  → RequirementParseResponse：state＋有效条件视图＋问题／冲突／警告
+```
+
+条件以field/key/operator/value/unit/strength表达，预算与参数不共用无单位数字；布尔功能保持JSON布尔，经过真实HTTP往返验证。
+同槽位硬条件按交集并存，只有用户显式确认撤销才解除旧约束；模糊、否定和更正语句不被模型擅自解释为放宽。
+解析器不读取摘要、识别结果、数据库或本地session文件，避免本阶段改变Phase 1B会话格式。客户端携带state只是工作输入，不是可信持久化偏好或身份记录。
+`source`仅记录本次明确规则命中或结构化用户提交，不能拿来证明跨会话稳定偏好。后续Agent需要在服务端管理状态、接入识别候选确认及长期偏好权限。
+`ready`仅检查基础购物槽位完整性；不同意图的完整度策略、候选存在性和工具执行许可仍属于后续工作流。
+容量和词表集中配置，无新增依赖、环境变量、模型下载、Docker服务或数据迁移。
+发现原有知识详情HTTP层的bool→float类型问题，内部快照未变；该前置修复已记录，需在Phase 3B联调前完成。不要把已有工程回归通过当成未覆盖的JSON类型断言通过。
+
 ## 验证边界与后续顺序
 
 1. **Phase 1A 已完成离线验证**：缓存、识别 Schema、传输生命周期与既有接口兼容检查。
@@ -134,7 +154,8 @@ POST knowledge/search → SearchRequest校验
 3. **Phase 1C 已完成离线及本地 HTTP 模型桩验证**：SSE 协议、增量解码、错误／取消与 Flutter 消费。现有 Phase 1 工程检查 32/32 通过，不等于所有产品验收要求均已满足。
 4. **Phase 2A 已完成离线与本地 HTTP 验证**：严格商品知识 Schema、18条固定样例、Metadata查询、证据定位及坏文件隔离。
 5. **Phase 2B 已完成离线与本地 HTTP 验证**：字段切片、BM25＋字符TF-IDF召回、前置Metadata过滤、商品级融合、确定性检索重排和原值证据。
-6. **Phase 3–5 尚未完成**：需求结构化、硬过滤／软偏好排序、检索与聊天／Flutter／报告接入、单Agent状态机、长期偏好、80条产品评测；不是完整RAG生成链路。
+6. **Phase 3A 已完成离线与本地 HTTP 验证**：严格需求Schema、保守规则分句解析、携带式增量状态、显式撤销／待确认、冲突及基础槽位判断；未接入聊天／Flutter。
+7. **Phase 3B 与 Phase 4–5 尚未完成**：硬过滤／软偏好排序、检索与聊天／Flutter／报告接入、单Agent状态机、长期偏好、80条产品评测；不是完整RAG生成链路。
 
 离线模型桩检查不证明真实视觉识别质量、购物推荐质量或真实模型首字延迟；部署、真实模型及真机尚未验证。
-具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md)、[2A 记录](modules/02a-product-knowledge.md) 和 [2B 记录](modules/02b-hybrid-retrieval.md)。
+具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md)、[2A 记录](modules/02a-product-knowledge.md) 、[2B 记录](modules/02b-hybrid-retrieval.md) 和 [3A 记录](modules/03a-structured-requirements.md)。
