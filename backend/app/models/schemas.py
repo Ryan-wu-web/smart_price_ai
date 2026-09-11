@@ -5,6 +5,8 @@ from typing import Annotated, Any, Literal, Optional
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
+from app.models.workflow import ShoppingInput
+
 
 class RecognizeRequest(BaseModel):
     image_base64: str = Field(..., min_length=1, max_length=15_000_000, description="Base64 编码的商品图片")
@@ -127,6 +129,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     session_id: SessionId | None = None
     current_product: ChatProduct | None = None
+    shopping: ShoppingInput | None = None
 
     @model_validator(mode="after")
     def nonblank_message(self):

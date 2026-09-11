@@ -458,3 +458,25 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 
 规则、权重、查询及详情上限集中于`app/core/recommendation_config.py`，不放进Prompt。无新依赖或环境变量。
 旧对话中的随机Mock、静默放宽和无证据报告还没有改接本接口；本模块完成不代表原有业务链路已经满足全部升级目标。
+
+## Phase 4A：购物会话接口
+
+`POST /api/v1/chat` 与 `POST /api/v1/chat/stream` 保持原协议，增加 `shopping` 对象。未开启购物且没有购物历史的会话继续使用旧模型聊天；购物会话不调用LLM，因此离线无密钥仍可检索、追问和生成有据报告。
+
+```json
+{"message":"推荐耳机，预算500元，最好主动降噪","session_id":"local-shopping-1","shopping":{}}
+```
+
+后续发送同一 session_id 与 `message:"生成报告"` 或 `"解释推荐"`、`"对比候选"`。`action="none"` 用于防止旧客户端误调用旧报告页；新内容在 `action_data.workflow`，含 `requirements/assessment/status/recognized_product/recognition_confirmed/recommendation/report/missing_information/trace/errors/retries/notice`。报告 `choices` 与本轮候选完全一致，并记录 `requirements_revision/catalog_sha256`。仅本地虚构样例，不输出实时价格或历史趋势。
+
+`shopping` 参数（严格 Schema，未知字段拒绝）：
+- `top_k`：1–10，默认5。
+- `expected_revision`：可选当前需求版本；不匹配409且不保存。
+- `additions/intent/remove_condition_ids/resolve_pending_ids/confirm_changes`：与3A显式编辑语义相同；撤销／忽略还必须提供 `expected_revision`。
+- `confirm_recognition`：默认false；true仅把明确确认的已识别品类作为条件，未支持品类422。品牌、价格和图像属性不自动进入约束。
+
+前端确认控件可使用固定消息 `确认识别品类` 或 `应用已确认的条件调整`。这些只是与显式提交字段配合的UI命令，不能让普通未知句子绕过pending。
+
+`GET /api/v1/chat/sessions/{session_id}`：返回工作流快照、current_product、摘要、最近20条消息。不存在404、损坏409；只适合本地单用户，不具有登录隔离。
+
+SSE仍为v1，`status.node`新增 intent/requirements/completeness/clarification/retrieval/filtering/ranking/explanation/report（validation/save沿用）。确定性购物文字一次delta，不冒充模型token流；result之前的文本仍是临时显示，只有end.success=true后完成。无候选不放宽；目录／工具失败返回 `workflow.status=unavailable` 与安全错误，已确认需求保留。超时与保存失败发 error/end(false)；非流购物超时504。结果过大413且不保存。完整交付边界见 `docs/modules/04a-shopping-workflow.md`。

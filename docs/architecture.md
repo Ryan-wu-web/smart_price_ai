@@ -184,3 +184,11 @@ POST recommendations：requirements完整状态＋top_k
 
 离线模型桩检查不证明真实视觉识别质量、购物推荐质量或真实模型首字延迟；部署、真实模型及真机尚未验证。
 具体命令、结果与回退范围见 [1A 记录](modules/01a-recognition-foundation.md)、[1B 记录](modules/01b-conversation-context.md)、[1C 记录](modules/01c-streaming-protocol.md)、[2A 记录](modules/02a-product-knowledge.md) 、[2B 记录](modules/02b-hybrid-retrieval.md) 、[3A 记录](modules/03a-structured-requirements.md)和[3B记录](modules/03b-evidence-ranking.md)。
+
+## Phase 4A：确定性购物工作流
+
+新聊天输入 `shopping` → SessionStore单会话锁 → 显式意图／规则需求更新 → 完整度追问 → ProductRetriever混合召回 → ProductRecommender完整事实硬过滤与软评分 → 证据解释／同快照报告 → WorkflowState校验 → 消息及状态原子保存。
+
+工作流运行在现有ChatService中，不引入Agent框架或新依赖；只读推荐计算移到线程，节点回调通过事件循环队列送到SSE。取消停止等待且不提交会话；已经开始的只读线程计算可能自行完成，不声称Python线程可强制取消。最终单帧大小有限制。状态只保存最新购物快照，旧文本消息仍保留；长期偏好尚未实现，也不会从识别或模型猜测自动保存。
+
+Legacy新会话仍可调用原LLM路径，购物状态一旦建立后续保持购物路径。新工作流报告不调用旧report路由。Redis／PostgreSQL与旧Mock迁移仍待后续模块；本地SessionStore只允许单worker，GET会话不是生产鉴权边界。详见 `docs/modules/04a-shopping-workflow.md`。

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from app.core.base_api_client import ModelOutputError
 from app.models.schemas import ChatResponse, SessionId
+from app.models.workflow import WorkflowNode
 
 
 class EventBase(BaseModel):
@@ -22,7 +23,7 @@ class TextEvent(EventBase):
 
 class StatusEvent(EventBase):
     type: Literal["status"] = "status"
-    node: Literal["context", "model", "validation", "save"]
+    node: Literal["context", "model", "validation", "save"] | WorkflowNode
     status: Literal["running"] = "running"
     message: str
 

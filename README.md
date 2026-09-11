@@ -2,7 +2,7 @@
 
 > **面向 C 端消费者的 AI 拍照识物购物助手**
 >
-> 一拍即识 · 智能导购 · 跨平台比价
+> 一拍即识 · 结构化需求 · 有据购物决策
 >
 > ![Flutter](https://img.shields.io/badge/Flutter-3.24.5-02569B?logo=flutter&logoColor=white)
 > ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.13-009688?logo=python&logoColor=white)
@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（本地验证日期：2026-09-12）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2A 已新增18条固定虚构商品知识、只读查询与证据追溯接口；尚未接入 Flutter、聊天或旧比价链路。Phase 2B 已实现可追溯混合检索（BM25＋字符TF-IDF、融合及重排），但不是预训练语义Embedding，也不是完整推荐链路。Phase 3A 已提供结构化需求与显式增量编辑接口（保守规则解析，无模型调用），尚未接入聊天／Flutter。Phase 3B 已新增独立的完整事实过滤、确定性软偏好排序和逐条件证据接口；无候选不自动放宽。旧聊天／报告尚未迁移，Phase 4–5 未完成。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
+> **当前状态（本地验证日期：2026-09-12）**：Phase 1A–1C基础链路、Phase 2A–2B固定样例知识／混合检索、Phase 3A–3B需求结构化与有据过滤排序已完成工程验证。Phase 4A 已将这些能力接入现有聊天接口的可选 `shopping` 模式，支持多轮确认、节点状态、证据、确定性报告和本地工作流快照；不需要模型密钥。新模式未接入Flutter页面，长期偏好、旧Mock统一与Phase 5产品评测尚未完成。模型聊天和图像识别保留，真实模型、真机及产品评测指标未验证。所有商品和价格仅为本地样例，不代表实时全网比价、全网最低价或真实历史价格。详见 [4A交付记录](docs/modules/04a-shopping-workflow.md)。
 
 ---
 
@@ -324,3 +324,14 @@ flutter run
 ## 📄 许可证
 
 MIT License © 2025 Smart Price
+
+
+### 本地购物工作流（无需模型密钥）
+
+按上方后端启动步骤启动单worker服务后，可在 `/docs` 调用 `POST /api/v1/chat`：
+
+```json
+{"message":"推荐耳机，预算500元，最好主动降噪","session_id":"local-shopping-1","shopping":{}}
+```
+
+继续同一会话发送“解释推荐”“对比候选”“生成报告”。响应 `action_data.workflow` 带需求版本、候选、证据、分项与报告；未知句子会追问，不会静默忽略或放宽硬条件。识别品类必须确认，不把识别价格当真实报价。详见 [API](docs/api.md) 与 [模块状态](docs/modules/README.md)。

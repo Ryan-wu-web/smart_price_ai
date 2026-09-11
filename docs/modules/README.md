@@ -9,9 +9,9 @@
 | --- | --- | --- |
 | 00 升级前代码整理 | 已完成清理与静态验证，运行时能力未验证 | [清理记录](00-cleanup.md) |
 | Phase 1 基础链路 | 1A–1C 已完成离线工程验证与本地流式模型桩验证，真实模型／真机未验证 | [1A 记录](01a-recognition-foundation.md) · [1B 记录](01b-conversation-context.md) · [1C 记录](01c-streaming-protocol.md) |
-| Phase 2 商品知识库 RAG | 2A 固定样例、2B字段混合检索与证据已验证；尚未接入业务生成链路 | [2A 记录](02a-product-knowledge.md) · [2B 记录](02b-hybrid-retrieval.md) |
-| Phase 3 结构化需求与排序 | 3A需求结构化、3B完整事实过滤／软偏好排序／逐条件证据已验证；旧聊天／Flutter未接入 | [3A 记录](03a-structured-requirements.md) · [3B记录](03b-evidence-ranking.md) |
-| Phase 4 工作流与记忆 | 尚未开始 | 后续记录 |
+| Phase 2 商品知识库 RAG | 2A 固定样例、2B字段混合检索与证据已验证；已接入4A可选购物会话；旧链路仍待统一 | [2A 记录](02a-product-knowledge.md) · [2B 记录](02b-hybrid-retrieval.md) |
+| Phase 3 结构化需求与排序 | 3A需求结构化、3B完整事实过滤／软偏好排序／逐条件证据已验证；4A可选购物聊天已接入，Flutter待做 | [3A 记录](03a-structured-requirements.md) · [3B记录](03b-evidence-ranking.md) |
+| Phase 4 工作流与记忆 | 4A服务端购物工作流已完成工程验证；Flutter接入与长期记忆待做 | [4A记录](04a-shopping-workflow.md) |
 | Phase 5 评测与交付 | 尚未开始 | 后续记录 |
 
 ## 每份记录必须包含

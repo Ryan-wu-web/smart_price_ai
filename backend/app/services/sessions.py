@@ -12,6 +12,7 @@ from weakref import WeakValueDictionary
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from app.models.schemas import ChatProduct, validate_session_id
+from app.models.workflow import WorkflowState
 
 logger = logging.getLogger(__name__)
 MAX_SESSION_BYTES = 2_000_000
@@ -41,6 +42,7 @@ class SessionState(BaseModel):
     summary: str = Field(default="", max_length=6000)
     summarized_count: int = Field(default=0, ge=0, strict=True)
     current_product: ChatProduct | None = None
+    workflow: WorkflowState | None = None
 
     @model_validator(mode="after")
     def valid_summary_cursor(self):
@@ -90,7 +92,10 @@ class SessionStore:
                 data = {"messages": data}
             elif not isinstance(data, dict) or data.get("version") != 2:
                 raise ValueError("Unsupported session version")
-            return SessionState.model_validate(data)
+            state = SessionState.model_validate(data)
+            if state.workflow is not None and state.workflow.session_id != session_id:
+                raise ValueError("Workflow session mismatch")
+            return state
         except FileNotFoundError:
             return SessionState()
         except (ValueError, UnicodeError, ValidationError) as exc:
@@ -108,6 +113,8 @@ class SessionStore:
         try:
             # Revalidate mutable state, including final output, before any write.
             checked = SessionState.model_validate(state.model_dump())
+            if checked.workflow is not None and checked.workflow.session_id != session_id:
+                raise SessionError("会话状态不一致，本轮未保存。", "SESSION_CORRUPT", 409)
             payload = checked.model_dump_json(exclude_none=True).encode("utf-8")
             if len(payload) > MAX_SESSION_BYTES:
                 raise SessionError("会话过长，请新建对话；原历史未删除。", "SESSION_TOO_LARGE", 413)

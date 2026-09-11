@@ -2,6 +2,7 @@
 import json
 import logging
 import math
+from collections.abc import Callable
 from collections import defaultdict
 
 from app.core import recommendation_config as cfg
@@ -115,7 +116,9 @@ class ProductRecommender:
         self.catalog = catalog
         self.retriever = retriever
 
-    def recommend(self, request: RecommendationRequest) -> RecommendationResponse:
+    def recommend(self, request: RecommendationRequest, *, allow_followup_intents: bool = False,
+                  on_node: Callable[[str], None] | None = None) -> RecommendationResponse:
+        notify = on_node or (lambda node: None)
         request = RecommendationRequest.model_validate(request.model_dump())
         assessment = RequirementParser().analyze(request.requirements)
         response = RecommendationResponse(status=assessment.status, assessment=assessment,
@@ -123,11 +126,12 @@ class ProductRecommender:
             questions=list(assessment.questions), warnings=list(cfg.WARNINGS))
         if assessment.status != "ready":
             return self._finish(response)
-        if assessment.state.intent != "recommend":
+        if assessment.state.intent != "recommend" and not allow_followup_intents:
             response.status = "unsupported_intent"
             response.questions.append("本接口只处理商品推荐；对比、解释和报告请等待后续工作流接入，或明确切换为推荐意图。")
             return self._finish(response)
 
+        notify("retrieval")
         hard, soft = assessment.hard_constraints, assessment.soft_preferences
         category = next(c.value for c in hard if c.field == "category" and c.operator == "eq")
         # Complete metadata scope, not top-K search hits. In this small local catalog,
@@ -161,7 +165,9 @@ class ProductRecommender:
         response.supplemented_products = sum(p.product_id not in retrieved_ids for p in products)
         logger.info("recommendation_node node=retrieval status=%s scoped=%d supplemented=%d", response.retrieval_status, len(products), response.supplemented_products)
 
+        notify("filtering")
         check_rows = []
+        qualified = []
         ranked = []
         for product in products:
             source = self.catalog.get_evidence(product.evidence_id)
@@ -176,6 +182,10 @@ class ProductRecommender:
                 if len(response.rejected) < cfg.REJECTION_DETAIL_LIMIT:
                     response.rejected.append(RejectedProduct(product_id=product.product_id, evidence_id=product.evidence_id, blockers=blockers))
                 continue
+            qualified.append((product, source, hard_checks))
+
+        notify("ranking")
+        for product, source, hard_checks in qualified:
             soft_checks = [evaluate_condition(product, source.locator, c) for c in soft]
             score, components = score_preferences(soft, soft_checks)
             all_checks = [*hard_checks, *soft_checks]
