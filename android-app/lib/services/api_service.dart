@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'chat_stream_decoder.dart';
 import '../models/product.dart';
 import '../models/recognition_result.dart';
 import '../utils/constants.dart';
@@ -13,6 +14,17 @@ class ApiException implements Exception {
   ApiException(this.message);
   @override
   String toString() => message;
+}
+
+/// Per-screen cancellation, never shared by the singleton API service.
+class ChatStreamCancellation {
+  bool _cancelled = false;
+  void Function()? _close;
+
+  void cancel() {
+    _cancelled = true;
+    _close?.call();
+  }
 }
 
 class ApiService {
@@ -279,7 +291,7 @@ class ApiService {
     }
   }
 
-  /// SSE 流式聊天：逐字返回 AI 回复
+  /// SSE v1 with old-server fallback; never automatically replay a chat POST.
   Future<void> sendChatStream(
     String message, {
     String? sessionId,
@@ -287,54 +299,84 @@ class ApiService {
     required void Function(String chunk) onChunk,
     required void Function(Map<String, dynamic> finalData) onDone,
     required void Function(String error) onError,
+    void Function(Map<String, dynamic> status)? onStatus,
+    ChatStreamCancellation? cancellation,
   }) async {
-    if (!await NetworkChecker.isOnline()) {
-      onError(ErrorMessages.noInternet);
-      return;
+    if (cancellation?._cancelled == true) return;
+    final client = http.Client();
+    cancellation?._close = client.close;
+    var notified = false;
+    var totalTimedOut = false;
+    final totalTimer = Timer(const Duration(seconds: 240), () {
+      totalTimedOut = true;
+      client.close();
+    });
+    void fail(String message) {
+      if (!notified && cancellation?._cancelled != true) {
+        notified = true;
+        onError(message);
+      }
     }
 
-    final body = <String, dynamic>{'message': message};
-    if (sessionId != null) body['session_id'] = sessionId;
-    if (currentProduct != null) body['current_product'] = currentProduct;
-
-    final client = http.Client();
     try {
-      final request = http.Request(
-        'POST',
-        Uri.parse('$_baseUrl/api/v1/chat/stream'),
-      )
-        ..headers['Content-Type'] = 'application/json'
-        ..body = jsonEncode(body);
-
-      final streamedResponse = await client.send(request);
-
-      if (streamedResponse.statusCode == 200) {
-        await for (final line in streamedResponse.stream
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())) {
-          if (line.startsWith('data: ')) {
-            final data = line.substring(6);
-            final jsonData = jsonDecode(data) as Map<String, dynamic>;
-            if (jsonData['done'] == true) {
-              if (jsonData['error'] is String) {
-                onError(jsonData['error'] as String);
-              } else {
-                onDone(jsonData);
-              }
-              return;
-            } else {
-              onChunk(jsonData['reply']?.toString() ?? '');
-            }
-          }
-        }
-      } else {
-        onError(_chatError(streamedResponse.statusCode));
+      if (!await NetworkChecker.isOnline()
+          .timeout(const Duration(seconds: 10))) {
+        fail(ErrorMessages.noInternet);
+        return;
       }
-    } on TimeoutException catch (_) {
-      onError(ErrorMessages.timeout);
-    } catch (e) {
-      onError('连接中断，暂时无法完成对话，请稍后重试。');
+      if (cancellation?._cancelled == true) return;
+      final body = <String, dynamic>{'message': message};
+      if (sessionId != null) body['session_id'] = sessionId;
+      if (currentProduct != null) body['current_product'] = currentProduct;
+      final request =
+          http.Request('POST', Uri.parse('$_baseUrl/api/v1/chat/stream'))
+            ..headers['Content-Type'] = 'application/json'
+            ..headers['Accept'] = 'text/event-stream'
+            ..body = jsonEncode(body);
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) {
+        fail(_chatError(response.statusCode));
+        return;
+      }
+      if (!(response.headers['content-type'] ?? '')
+          .toLowerCase()
+          .startsWith('text/event-stream')) {
+        throw const FormatException('Expected event stream');
+      }
+      final decoder = ChatStreamDecoder();
+      // Idle timeout is deliberately longer than the backend's maximum 180s turn.
+      await for (final line in response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .timeout(const Duration(seconds: 195))) {
+        if (cancellation?._cancelled == true) return;
+        final data = decoder.addLine(line);
+        if (data == null) continue;
+        if (data['type'] == 'status') {
+          onStatus?.call(data);
+        } else if (data['type'] == 'delta' ||
+            (!data.containsKey('type') && data['done'] != true)) {
+          onChunk(data['reply'] as String);
+        }
+        if (decoder.ended) break;
+      }
+      decoder.finish();
+      if (decoder.error != null) {
+        fail(decoder.error!);
+      } else if (!notified && cancellation?._cancelled != true) {
+        notified = true;
+        onDone(decoder.result!);
+      }
+    } on TimeoutException {
+      fail('等待回复超时，未能确认本轮是否保存；不会自动重发，请稍后查看。');
+    } catch (_) {
+      fail(totalTimedOut
+          ? '等待回复超时，未能确认本轮是否保存；不会自动重发，请稍后查看。'
+          : '连接中断或回复不完整，未能确认本轮是否保存；不会自动重发。');
     } finally {
+      totalTimer.cancel();
+      cancellation?._close = null;
       client.close();
     }
   }

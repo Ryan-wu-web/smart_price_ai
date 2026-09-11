@@ -55,25 +55,57 @@ class LLMClient(BaseAPIClient):
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ):
-        """
-        流式聊天：yield 每一块的文本内容。
-        解析火山引擎 SSE 格式：data: {...}
-        """
+        """Read complete upstream SSE frames; malformed or truncated streams fail closed."""
+        data_lines = []
+        frame_chars = 0
+        stopped = False
         async with aclosing(self._post_stream(messages, temperature, max_tokens)) as source:
             async for line in source:
-                if not line.startswith("data: "):
+                if line != "":
+                    if line.startswith("data:"):
+                        value = line[5:]
+                        if value.startswith(" "):
+                            value = value[1:]
+                        data_lines.append(value)
+                        frame_chars += len(value)
+                        if frame_chars > 128000:
+                            raise ModelOutputError("模型响应过长，请重试。")
                     continue
-                data = line[6:]  # 去掉 "data: " 前缀
+                if not data_lines:
+                    continue
+                data = "\n".join(data_lines)
+                data_lines = []
+                frame_chars = 0
                 if data == "[DONE]":
-                    break
+                    if not stopped:
+                        raise ModelOutputError("模型回复未正常完成，本轮未保存，请重试。")
+                    return
                 try:
-                    chunk = json.loads(data)
-                    content = (
-                        chunk.get("choices", [{}])[0]
-                        .get("delta", {})
-                        .get("content", "")
-                    )
-                    if content:
-                        yield content
-                except (json.JSONDecodeError, IndexError, KeyError):
-                    continue
+                    chunk = json.loads(data, parse_constant=self._reject_constant)
+                    if not isinstance(chunk, dict) or "error" in chunk:
+                        raise ValueError("Provider error")
+                    choices = chunk["choices"]
+                    if not isinstance(choices, list):
+                        raise ValueError("Invalid choices")
+                    if not choices and isinstance(chunk.get("usage"), dict):
+                        continue
+                    if len(choices) != 1:
+                        raise ValueError("Invalid choice count")
+                    choice = choices[0]
+                    if choice.get("index", 0) != 0 or stopped:
+                        raise ValueError("Unexpected choice")
+                    delta = choice["delta"]
+                    if not isinstance(delta, dict) or delta.get("tool_calls") or delta.get("function_call"):
+                        raise ValueError("Unsupported tool call")
+                    content = delta.get("content")
+                    if content is not None and not isinstance(content, str):
+                        raise ValueError("Invalid content")
+                    finish = choice.get("finish_reason")
+                    if finish not in (None, "stop"):
+                        raise ValueError("Incomplete or unsupported completion")
+                    stopped = finish == "stop"
+                except (ValueError, KeyError, TypeError, AttributeError):
+                    raise ModelOutputError("模型流式响应无效或未完成，本轮未保存，请重试。") from None
+                if content:
+                    yield content
+        raise ModelOutputError("模型连接提前结束，本轮未保存，请重试。")

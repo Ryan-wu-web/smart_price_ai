@@ -2,13 +2,14 @@ import asyncio
 from contextlib import aclosing
 import json
 import logging
-import re
 import uuid
 from typing import Any
 
 from pydantic import ValidationError
 
+from app.config import settings
 from app.core.base_api_client import ModelError, ModelOutputError
+from app.core.streaming import EVENT_ADAPTER, ReplyDecoder, unique_object
 from app.core.llm_client import LLMClient
 from app.core.prompt_engine import PromptEngine
 from app.models.schemas import ChatModelResult, ChatProduct, ChatRequest, ChatSummary
@@ -103,39 +104,71 @@ class ChatService:
 
     async def chat_stream(self, message: str, session_id: str | None = None,
                           current_product: dict[str, Any] | ChatProduct | None = None):
-        """Keep the legacy SSE payload for now; share the transactional session path."""
+        """Emit validated v1 events; only a complete successful turn is committed."""
         request = self._request(message, session_id, current_product)
         session_id = request.session_id or str(uuid.uuid4())
-        async with self.store.turn(session_id):
-            state, messages = await self._prepare(request, session_id)
-            buffer = ""
-            last_reply = ""
-            async with aclosing(self.llm_client.chat_stream(messages)) as source:
-                async for chunk in source:
-                    buffer += chunk
-                    if len(buffer) > 64000:
-                        raise ModelOutputError("回复内容过长，请缩小问题范围后重试。")
-                    current_reply = ""
-                    try:
-                        parsed = json.loads(buffer)
-                        if isinstance(parsed, dict) and isinstance(parsed.get("reply"), str):
-                            current_reply = parsed["reply"]
-                    except json.JSONDecodeError:
-                        match = re.search(r'"reply"\s*:\s*"([^"]*)"', buffer)
-                        if match:
-                            current_reply = match.group(1)
-                    # Incremental JSON parsing and artificial delays are Phase 1C work.
-                    new_text = current_reply[len(last_reply):]
-                    if new_text:
-                        for char in new_text:
-                            if char in "\n\r":
-                                continue
-                            yield json.dumps({"reply": char, "session_id": session_id}, ensure_ascii=False)
-                            await asyncio.sleep(0.015)
-                        last_reply = current_reply
-            try:
-                result = ChatModelResult.model_validate(json.loads(buffer, parse_constant=LLMClient._reject_constant))
-            except (ValueError, TypeError, ValidationError):
-                raise ModelOutputError("回复格式不符合要求，本轮未保存，请重试。") from None
-            response = self._finish(state, session_id, message, result)
-            yield json.dumps({**response, "done": True}, ensure_ascii=False)
+        seq = 0
+
+        def event(kind, **fields):
+            nonlocal seq
+            seq += 1
+            value = EVENT_ADAPTER.validate_python({
+                "type": kind, "session_id": session_id, "seq": seq, **fields,
+            })
+            return value.model_dump_json(exclude_none=True)
+
+        try:
+            async with self.store.turn(session_id):
+                deadline = asyncio.get_running_loop().time() + settings.chat_stream_timeout_seconds
+
+                async def bounded(awaitable):
+                    remaining = max(0, deadline - asyncio.get_running_loop().time())
+                    return await asyncio.wait_for(awaitable, timeout=remaining)
+
+                yield event("status", node="context", message="正在整理会话与商品信息")
+                state, messages = await bounded(self._prepare(request, session_id))
+                yield event("status", node="model", message="正在生成回复")
+                buffer = ""
+                decoder = ReplyDecoder()
+                async with aclosing(self.llm_client.chat_stream(messages)) as source:
+                    while True:
+                        try:
+                            chunk = await bounded(anext(source))
+                        except StopAsyncIteration:
+                            break
+                        buffer += chunk
+                        if len(buffer) > 64000:
+                            raise ModelOutputError("回复内容过长，请缩小问题范围后重试。")
+                        delta = decoder.feed(chunk)
+                        if delta:
+                            yield event("delta", reply=delta)
+                yield event("status", node="validation", message="正在校验回复结构")
+                try:
+                    result = ChatModelResult.model_validate(json.loads(
+                        buffer, parse_constant=LLMClient._reject_constant,
+                        object_pairs_hook=unique_object,
+                    ))
+                    # Streaming is provisional. Never save text different from what was emitted.
+                    if result.reply != decoder.text:
+                        raise ValueError("Stream text mismatch")
+                    result.model_dump_json().encode("utf-8")
+                except (ValueError, TypeError, ValidationError):
+                    raise ModelOutputError("回复格式不符合要求，本轮未保存，请重试。") from None
+                yield event("status", node="save", message="正在保存完整回复")
+                if asyncio.get_running_loop().time() >= deadline:
+                    raise TimeoutError
+                response = self._finish(state, session_id, message, result)
+                yield event("result", **{k: v for k, v in response.items() if k != "session_id"})
+            yield event("end", success=True)
+        except (SessionError, ModelError) as exc:
+            logger.warning("chat_stream_failed code=%s", exc.code)
+            yield event("error", code=exc.code, error=str(exc))
+            yield event("end", success=False)
+        except TimeoutError:
+            logger.warning("chat_stream_failed code=stream_timeout")
+            yield event("error", code="stream_timeout", error="等待回复超时，本轮未保存，请稍后重试。")
+            yield event("end", success=False)
+        except Exception as exc:
+            logger.error("chat_stream_failed type=%s", type(exc).__name__)
+            yield event("error", code="stream_failed", error="暂时无法完成回复，请稍后重试。")
+            yield event("end", success=False)

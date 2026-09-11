@@ -19,7 +19,7 @@
 
 > 💡 本项目为**个人独立开发**，前后端、UI 设计、AI 任务编排、Prompt 工程均由一人完成。
 
-> **当前状态（2026-09-11）**：已完成升级前代码整理及 Phase 1A（识别缓存、模型解析、HTTP 生命周期），通过离线工程检查。Phase 1 的会话／SSE 修复及 Phase 2–5 尚未完成。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。本文功能说明不是本轮真机／模型验证结果；升级目标和历史性能描述不能作为实测指标。
+> **当前状态（2026-09-11）**：已完成代码整理及 Phase 1A–1C 的识别缓存、模型连接池、会话上下文和 SSE 协议修复，通过离线工程检查与本地模型桩 HTTP 流验证。Phase 2–5 尚未完成，其他业务 Schema 将随相应模块收紧。商品、平台报价和价格走势均为本地模拟数据，不代表实时全网比价、全网最低价或真实历史价格。真实模型、真机效果与产品评测指标尚未验证。
 
 ---
 
@@ -33,12 +33,14 @@
 - 智能布局算法：自动上下翻转、水平避碰、边缘吸附
 - 精致的深色卡片气泡 + easeOutBack 弹入动画 + 锚点脉冲效果
 
-### 2️⃣ SSE 流式 AI 聊天（逐字显示）
+### 2️⃣ SSE 流式 AI 聊天（真实分块增量）
 
-AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送消息后 AI 回复**逐字显示**，消除等待焦虑，体验媲美 ChatGPT。
+AI 导购对话采用 **Server-Sent Events (SSE)**：文字随模型分块到达就显示，不等待整段 JSON，也不添加人为逐字延迟。增量是临时内容，最终结构校验、保存并收到成功结束事件后才展示完成状态。
 
 - 后端：FastAPI StreamingResponse + 火山引擎 Doubao 流式 API
-- 前端：HTTP SSE 客户端逐行解析，字符级追加渲染
+- 前端：按完整 SSE 帧解析，区分 `delta/status/result/error/end`，检查事件顺序与终态
+- 展示整理上下文、生成回复、校验、保存状态；超时／断流友好提示，退出聊天页取消请求
+- 不自动重发流式 POST；协议与时限见 [API 说明](docs/api.md#sse-v1-事件协议)
 - 支持决策卡片动态生成（对比分析 / 购买指南 / AI 决策报告）
 
 ### 3️⃣ 单／多目标隔离的精确缓存
@@ -60,7 +62,7 @@ AI 导购对话采用 **Server-Sent Events (SSE)** 流式传输，用户发送�
 | 智能导购 | 多轮对话 + 意图识别 | 决策卡片（对比/指南/报告）|
 | 决策报告 | 上下文聚合 + 结构化生成 | 最优选择 + 购买建议 |
 
-Phase 1A 已完成识别 Schema、缓存隔离和共享 HTTP；Phase 1B 已为对话输入、回复、摘要和商品上下文增加 Schema，修复摘要丢历史并原子保存会话。统一 SSE 事件和其他业务专用 Schema 仍待后续模块实施。
+Phase 1A 已完成识别 Schema、缓存隔离和共享 HTTP；Phase 1B 已为对话输入、回复、摘要和商品上下文增加 Schema，修复摘要丢历史并原子保存会话。Phase 1C 增加经 Pydantic 校验的 SSE 事件和增量解析。其他业务专用 Schema 随后续商品检索／报告模块收紧。
 
 ---
 
@@ -178,6 +180,7 @@ flutter run
 | [`docs/modules/00-cleanup.md`](docs/modules/00-cleanup.md) | 升级前清理范围、验证、回退与后续边界 |
 | [`docs/modules/01a-recognition-foundation.md`](docs/modules/01a-recognition-foundation.md) | Phase 1A 实际改动、离线结果与复现方式 |
 | [`docs/modules/01b-conversation-context.md`](docs/modules/01b-conversation-context.md) | Phase 1B 会话、摘要、识别上下文与实际验证 |
+| [`docs/modules/01c-streaming-protocol.md`](docs/modules/01c-streaming-protocol.md) | Phase 1C SSE 协议、客户端消费与实际验证 |
 | [`docs/api.md`](docs/api.md) | 现有接口、识别字段及错误约定 |
 | [`docs/architecture.md`](docs/architecture.md) | 当前运行链路与尚未完成的架构部分 |
 

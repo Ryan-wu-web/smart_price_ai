@@ -30,6 +30,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   String? _sessionId;
   bool _isLoading = false;
+  String _streamStatus = '正在连接';
+  final _streamCancellation = ChatStreamCancellation();
   Map<String, dynamic>? _currentProduct;
 
   @override
@@ -55,6 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _streamCancellation.cancel();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -93,6 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
         timestamp: DateTime.now(),
       ));
       _isLoading = true;
+      _streamStatus = '正在连接';
     });
     _scrollToBottom();
 
@@ -112,6 +116,14 @@ class _ChatScreenState extends State<ChatScreen> {
         text,
         sessionId: _sessionId,
         currentProduct: _currentProduct,
+        cancellation: _streamCancellation,
+        onStatus: (status) {
+          if (!mounted) return;
+          setState(() {
+            _streamStatus = status['message'] as String;
+            _sessionId = status['session_id'] as String;
+          });
+        },
         onChunk: (chunk) {
           if (!mounted) return;
           setState(() {
@@ -393,7 +405,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _buildDot(2),
           const SizedBox(width: 8),
           Text(
-            'AI 思考中...',
+            _streamStatus,
             style: Constants.caption.copyWith(color: Constants.tertiaryTextColor),
           ),
         ],

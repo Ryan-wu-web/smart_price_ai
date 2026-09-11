@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     model_write_timeout_seconds: float = Field(default=30, gt=0, le=120)
     model_pool_timeout_seconds: float = Field(default=10, gt=0, le=120)
     model_max_connections: int = Field(default=20, ge=1, le=100)
+    chat_stream_timeout_seconds: float = Field(default=120, gt=0, le=180)
     model_json_repair_attempts: int = Field(default=1, ge=0, le=2)
 
     class Config:

@@ -40,7 +40,7 @@ async def chat(request: ChatRequest, llm_client: LLMClient = Depends(get_llm_cli
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest, llm_client: LLMClient = Depends(get_llm_client)):
-    """SSE 流式聊天：逐字返回 AI 回复。"""
+    """SSE v1：状态、文本增量、结构结果、错误及结束事件。"""
     try:
         service = ChatService(llm_client=llm_client)
 
@@ -50,21 +50,17 @@ async def chat_stream(request: ChatRequest, llm_client: LLMClient = Depends(get_
             service.store.load(request.session_id)
 
         async def event_generator():
-            try:
-                async with aclosing(service.chat_stream(
-                    request.message, request.session_id, request.current_product
-                )) as source:
-                    async for chunk in source:
-                        yield f"data: {chunk}\n\n"
-            except (SessionError, ModelError) as exc:
-                logger.warning("chat_stream_failed code=%s", exc.code)
-                # Legacy-compatible terminal failure; typed error/end protocol is Phase 1C.
-                payload = {"done": True, "error": str(exc), "reply": "", "action": "none", "action_data": {}}
-                yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+            async with aclosing(service.chat_stream(
+                request.message, request.session_id, request.current_product
+            )) as source:
+                async for chunk in source:
+                    payload = json.loads(chunk)
+                    yield f"event: {payload['type']}\nid: {payload['seq']}\ndata: {chunk}\n\n"
 
         return StreamingResponse(
             event_generator(),
             media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
     except SessionError as exc:
         logger.warning("session_request_failed code=%s", exc.code)
