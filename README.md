@@ -11,6 +11,7 @@
 - [早晨验收手册](docs/acceptance.md)：启动、逐项操作、预期结果和未验收项。
 - [评测与复现](docs/evaluation.md)：80条数据、指标分子分母、基线、真实结果、7个失败案例。
 - [语言解析与强度澄清收尾](docs/modules/06a-language-clarification.md)：v2变化、回归与兼容边界。
+- [代码整理与残留审计](docs/modules/06b-code-readability.md)：已验证的可读性改动，以及被执行策略拦截、尚未物理删除的残留清单。
 - [API](docs/api.md) · [当前架构](docs/architecture.md) · [每个模块做了什么](docs/modules/README.md)。
 
 ## 当前能力

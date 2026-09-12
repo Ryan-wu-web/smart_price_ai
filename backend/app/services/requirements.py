@@ -23,7 +23,7 @@ NUMBER = NUMBER_PATTERN
 MONEY = rf"({NUMBER})(千|万)?(?:元|块钱|块)?"
 # Do not split 1,000 into a valid but wrong budget=1; the whole clause stays pending.
 CLAUSE_SEPARATOR = re.compile(r"[；;。\n！？!?]+|(?<![0-9０-９])[,，]|[,，](?![0-9０-９])")
-AMBIGUOUS = re.compile(r"如果|或者|还是|左右|大概|大约|差不多|不是|不用|无需|不一定|不要求|取消|改成|改为|改到|换成|不再|但是|但|或者|或|并且|而是|不要.*不要|随便|都行|任何|无所谓")
+AMBIGUOUS = re.compile(r"如果|或者|还是|左右|大概|大约|差不多|不是|不用|无需|不一定|不要求|取消|改成|改为|改到|换成|不再|但是|但|或|并且|而是|不要.*不要|随便|都行|任何|无所谓")
 LABELS = {"budget": "预算", "category": "品类", "brand": "品牌", "use_case": "用途", "feature": "功能", "parameter": "参数"}
 QUESTIONS = {"intent": "希望推荐、对比、解释商品，还是生成报告？", "category": "想选什么品类？例如：推荐耳机。", "budget_max": "预算上限是多少元？例如：预算不超过500元。"}
 
@@ -38,11 +38,11 @@ def _condition(field, value, operator="eq", strength="hard", key=None, unit=None
     return ConditionInput(field=field, value=value, operator=operator, strength=strength, key=key, unit=unit)
 
 
-def _money(number, multiplier):
+def _money(number: str, multiplier: str | None) -> float:
     return parse_number(number) * {None: 1, "千": 1000, "万": 10000}[multiplier]
 
 
-def _signature(condition):
+def _signature(condition: ConditionInput) -> tuple:
     return (condition.field, condition.key, condition.operator, condition.value, condition.strength, condition.unit)
 
 
@@ -52,7 +52,10 @@ class StrengthClarification:
     options: list[ConditionInput]
 
 
-def _with_strength(condition: ConditionInput, strength: str | None):
+def _require_explicit_strength(
+    condition: ConditionInput, strength: str | None,
+) -> tuple[None, list[ConditionInput]] | StrengthClarification:
+    """Return a confirmed condition or alternatives; never silently choose soft."""
     if strength is not None:
         return None, [condition]
     return StrengthClarification([
@@ -60,17 +63,33 @@ def _with_strength(condition: ConditionInput, strength: str | None):
     ])
 
 
-def _budget_conditions(text: str, strength: str | None = None):
-    budget = re.fullmatch(rf"预算{MONEY}(?:到|至|[-~～]){MONEY}", text)
-    if budget:
-        lo, lm, hi, hm = budget.groups()
-        if (lm is None) != (hm is None):
+def _budget_conditions(
+    text: str, strength: str | None = None,
+) -> list[ConditionInput] | None:
+    """Parse a complete budget clause without inheriting omitted magnitude units."""
+    effective_strength = strength or "hard"
+    range_match = re.fullmatch(rf"预算{MONEY}(?:到|至|[-~～]){MONEY}", text)
+    if range_match:
+        lower_token, lower_multiplier, upper_token, upper_multiplier = range_match.groups()
+        if (lower_multiplier is None) != (upper_multiplier is None):
             return None  # Do not guess which end inherits a 千/万 multiplier.
-        if (parse_number(lo) < 10 and _money(hi, hm) >= 100
-                and any(char in lo + hi for char in "十百千万")):
+        if (
+            parse_number(lower_token) < 10
+            and _money(upper_token, upper_multiplier) >= 100
+            and any(char in lower_token + upper_token for char in "十百千万")
+        ):
             return None  # 三到五百 can imply an omitted 百; ask instead.
-        return [_condition("budget", _money(lo, lm), "min", strength or "hard", unit="CNY"),
-                      _condition("budget", _money(hi, hm), "max", strength or "hard", unit="CNY")]
+        return [
+            _condition(
+                "budget", _money(lower_token, lower_multiplier), "min",
+                effective_strength, unit="CNY",
+            ),
+            _condition(
+                "budget", _money(upper_token, upper_multiplier), "max",
+                effective_strength, unit="CNY",
+            ),
+        ]
+
     for pattern, operator in (
         (rf"(?:预算)?(?:不超过|最多|上限(?:为|是)?|至多){MONEY}", "max"),
         (rf"(?:预算)?(?:不少于|至少|下限(?:为|是)?){MONEY}", "min"),
@@ -80,13 +99,15 @@ def _budget_conditions(text: str, strength: str | None = None):
     ):
         match = re.fullmatch(pattern, text)
         if match:
-            return [_condition("budget", _money(*match.groups()), operator, strength or "hard", unit="CNY")]
-
+            return [_condition(
+                "budget", _money(*match.groups()), operator,
+                effective_strength, unit="CNY",
+            )]
     return None
 
 
-def _clause(text: str):
-    """Return (intent, conditions) only when the complete clause is understood."""
+def _clause(text: str) -> tuple[str | None, list[ConditionInput]] | StrengthClarification | None:
+    """Parse the whole clause, retaining unsupported wording or uncertain strength."""
     text = re.sub(r"\s+", "", text)
     if AMBIGUOUS.search(text):
         return None
@@ -134,7 +155,7 @@ def _clause(text: str):
     if text in cfg.FEATURE_ALIASES:
         condition = _condition("feature", True, strength=strength or "soft", key=cfg.FEATURE_ALIASES[text])
         if condition.key in cfg.CLARIFY_FEATURE_KEYS:
-            return _with_strength(condition, strength)
+            return _require_explicit_strength(condition, strength)
         return None, [condition]
     if text.startswith("不要") and text[2:] in cfg.FEATURE_ALIASES and strength is None:
         return None, [_condition("feature", False, key=cfg.FEATURE_ALIASES[text[2:]])]
@@ -164,7 +185,7 @@ def _clause(text: str):
         if match and not re.search(r"不|和|及|且|也|没|要", match[1]) and not (negative and strength is not None):
             condition = _condition("parameter", match[1], "ne" if negative else "eq", "hard" if negative else strength or "soft", key)
             if not negative and key in cfg.CLARIFY_TEXT_KEYS:
-                return _with_strength(condition, strength)
+                return _require_explicit_strength(condition, strength)
             return None, [condition]
     return None
 
@@ -236,13 +257,17 @@ class RequirementParser:
             pending[pid].resolved_turn = turn
         state.revision = turn
 
-        def append_condition(value, source):
-            for pending in state.pending:
-                if (pending.reason == "strength_required" and pending.resolved_turn is None
-                        and pending.source.turn < turn
-                        and any(_signature(value) == _signature(option) for option in pending.options)):
-                    pending.resolved_turn = turn
+        def append_condition(value: ConditionInput, source: RequirementSource):
             sig = _signature(value)
+            for pending_item in state.pending:
+                # Only a previous turn's exact alternative is an implicit resolution.
+                if (
+                    pending_item.reason == "strength_required"
+                    and pending_item.resolved_turn is None
+                    and pending_item.source.turn < turn
+                    and any(sig == _signature(option) for option in pending_item.options)
+                ):
+                    pending_item.resolved_turn = turn
             if any(_signature(c) == sig and c.removed_turn is None for c in state.conditions):
                 return
             if len(state.conditions) >= cfg.MAX_ITEMS:

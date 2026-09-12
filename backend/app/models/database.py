@@ -1,10 +1,15 @@
+"""Legacy ORM declarations; not connected to the current application runtime.
+
+Sessions use services.sessions; confirmed preferences use services.preferences
+with standard-library SQLite. These declarations do not create tables or provide
+implemented price history / remote storage capabilities.
+"""
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import JSON, Column, DateTime, Float, String, Text
+from sqlalchemy.orm import declarative_base
 
-from app.config import settings
 
 Base = declarative_base()
 
