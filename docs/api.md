@@ -1,7 +1,7 @@
 # API：当前实现与兼容边界
 
-更新（本地验证日期）：2026-09-12，Phase 1–3 与 Phase 4A–4D。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
-本页不是完整升级验收报告，商品与价格仍为本地样例。
+更新（本地验证日期）：2026-09-12，Phase 1–5（含4E会话往返修复和5离线评测）。以运行时 `/openapi.json` 和 `/docs` 为接口 Schema 权威来源。
+商品与价格均为本地虚构样例。完整能力边界见[验收手册](acceptance.md)，真实指标及失败案例见[评测说明](evaluation.md)。
 
 ## 已有接口（没有改名）
 
@@ -80,7 +80,7 @@
 - 商品上下文来自客户端或识别，尚未经本地知识库核验，不能作为推荐证据。
 
 普通成功响应仍含 `reply/action/action_data/session_id`，新增可选 `current_product`；无商品时普通响应省略该字段，流式终态为 null。
-`reply` 必须为非空字符串，最长 16,000 字符；action 限定 `none/report/trend/filter/compare`，action_data 必须为对象（其各业务子结构尚待后续严格约束）。
+`reply` 必须为非空字符串，最长 16,000 字符；action 限定 `none/report/trend/filter/compare`，action_data 必须为对象（此为旧模型路径的兼容信封；shopping路径的workflow另按严格Schema校验）。
 非流式回复和摘要采用有限 Schema 修复；流式最终 JSON 进行 Schema 校验，不合格时本轮不保存，暂不对已显示流内容自动重播。
 模型输出的商品字段不作为会话更新来源；只有明确传入的新商品才会替换上下文。
 
@@ -501,3 +501,13 @@ SSE仍为v1，`status.node`新增 intent/requirements/completeness/clarification
 - `POST /report` 保留请求字段，只信任`best_choice.id`或`best_choice.product_id`查到的目录事实。名称、价格和替代品等客户端信息不作为证据。未知ID422；目录不可用503。保留summary/pros/cons/recommendation，新增product_id/evidence_ids/catalog/notice；这是商品知识摘要，不是未执行排序的“最优选择”。个性化报告使用购物工作流。
 - `GET /suggest` 返回固定导航卡，不调用模型；旧type标识保留用于导航，但标题／描述不再声称全网最低或官方保障。
 - Flutter对比列表明确展示样例区间及证据；取消条件需要用户点击；空历史不画零价曲线。旧报告只显示服务端查库结果，未核验的旧reportData不再作为商品事实展示。
+
+
+## 评测发现的调用注意（Phase 5）
+
+- 意图采用有限词表：“帮我比较两款耳机”“帮我出一份购物报告”等口语不保证识别；当前可用“对比耳机”“生成报告”。未知句会追问，不应由客户端隐藏。
+- “耳机控制在五百块以内”“背包，最多六百”等中文数词／别名未覆盖。请核对提取条件，而不是只看最终候选。
+- 未标“必须”的颜色／防水等级等文本参数默认soft；若界面显示soft，与用户真正的硬条件不同，应明确确认后再请求。
+- 识别实体没有自动映射到商品ID；旧报告必须用knowledge／compare返回的真实目录ID，例如`sample-audio-01`，不是凭名称或客户端报价生成。
+- 会话序列化保留未知参数的显式null；旧已损坏文件仍返回409，不会自动伪造缺失参数修复。
+- 无模型密钥可使用shopping；健康检查不证明模型有效。原始指标及可复现命令见[评测说明](evaluation.md)。
