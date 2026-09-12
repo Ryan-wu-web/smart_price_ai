@@ -3,6 +3,7 @@
 No provider calls, product invention, storage writes or automatic relaxation.
 Unknown wording remains blocking pending information instead of disappearing.
 """
+from dataclasses import dataclass
 import itertools
 import json
 import logging
@@ -11,16 +12,17 @@ import re
 from pydantic import ValidationError
 
 from app.core import requirements_config as cfg
+from app.core.requirement_numbers import NUMBER_PATTERN, parse_number
 from app.models.requirements import (
     ConditionInput, PendingCondition, RequirementCondition, RequirementConflict,
     RequirementParseRequest, RequirementParseResponse, RequirementSource, UserRequirements,
 )
 
 logger = logging.getLogger(__name__)
-NUMBER = r"[0-9]+(?:\.[0-9]+)?"
-MONEY = rf"({NUMBER})(千|万)?(?:元|块)?"
+NUMBER = NUMBER_PATTERN
+MONEY = rf"({NUMBER})(千|万)?(?:元|块钱|块)?"
 # Do not split 1,000 into a valid but wrong budget=1; the whole clause stays pending.
-CLAUSE_SEPARATOR = re.compile(r"[；;。\n！？!?]+|(?<![0-9])[,，]|[,，](?![0-9])")
+CLAUSE_SEPARATOR = re.compile(r"[；;。\n！？!?]+|(?<![0-9０-９])[,，]|[,，](?![0-9０-９])")
 AMBIGUOUS = re.compile(r"如果|或者|还是|左右|大概|大约|差不多|不是|不用|无需|不一定|不要求|取消|改成|改为|改到|换成|不再|但是|但|或者|或|并且|而是|不要.*不要|随便|都行|任何|无所谓")
 LABELS = {"budget": "预算", "category": "品类", "brand": "品牌", "use_case": "用途", "feature": "功能", "parameter": "参数"}
 QUESTIONS = {"intent": "希望推荐、对比、解释商品，还是生成报告？", "category": "想选什么品类？例如：推荐耳机。", "budget_max": "预算上限是多少元？例如：预算不超过500元。"}
@@ -37,11 +39,50 @@ def _condition(field, value, operator="eq", strength="hard", key=None, unit=None
 
 
 def _money(number, multiplier):
-    return float(number) * {None: 1, "千": 1000, "万": 10000}[multiplier]
+    return parse_number(number) * {None: 1, "千": 1000, "万": 10000}[multiplier]
 
 
 def _signature(condition):
     return (condition.field, condition.key, condition.operator, condition.value, condition.strength, condition.unit)
+
+
+@dataclass(frozen=True)
+class StrengthClarification:
+    """A parsed value whose filtering/ranking role still needs user confirmation."""
+    options: list[ConditionInput]
+
+
+def _with_strength(condition: ConditionInput, strength: str | None):
+    if strength is not None:
+        return None, [condition]
+    return StrengthClarification([
+        condition.model_copy(update={"strength": value}) for value in ("hard", "soft")
+    ])
+
+
+def _budget_conditions(text: str, strength: str | None = None):
+    budget = re.fullmatch(rf"预算{MONEY}(?:到|至|[-~～]){MONEY}", text)
+    if budget:
+        lo, lm, hi, hm = budget.groups()
+        if (lm is None) != (hm is None):
+            return None  # Do not guess which end inherits a 千/万 multiplier.
+        if (parse_number(lo) < 10 and _money(hi, hm) >= 100
+                and any(char in lo + hi for char in "十百千万")):
+            return None  # 三到五百 can imply an omitted 百; ask instead.
+        return [_condition("budget", _money(lo, lm), "min", strength or "hard", unit="CNY"),
+                      _condition("budget", _money(hi, hm), "max", strength or "hard", unit="CNY")]
+    for pattern, operator in (
+        (rf"(?:预算)?(?:不超过|最多|上限(?:为|是)?|至多){MONEY}", "max"),
+        (rf"(?:预算)?(?:不少于|至少|下限(?:为|是)?){MONEY}", "min"),
+        (rf"(?:预算)?(?:控制在)?{MONEY}(?:以内|以下)", "max"),
+        (rf"(?:预算)?{MONEY}(?:以上)", "min"),
+        (rf"预算(?:为|是)?{MONEY}", "max"),
+    ):
+        match = re.fullmatch(pattern, text)
+        if match:
+            return [_condition("budget", _money(*match.groups()), operator, strength or "hard", unit="CNY")]
+
+    return None
 
 
 def _clause(text: str):
@@ -49,15 +90,27 @@ def _clause(text: str):
     text = re.sub(r"\s+", "", text)
     if AMBIGUOUS.search(text):
         return None
+    text = re.sub(r"^(?:请|麻烦)(?:你)?", "", text)
+    for command_intent, pattern in cfg.INTENT_PATTERNS.items():
+        if re.fullmatch(pattern, text):
+            return command_intent, []
     if text in cfg.INTENT_COMMANDS:
         return cfg.INTENT_COMMANDS[text], []
     intent = None
-    for prefix, value in cfg.INTENT_PREFIXES.items():
+    for prefix in sorted(cfg.INTENT_PREFIXES, key=len, reverse=True):
+        value = cfg.INTENT_PREFIXES[prefix]
         if text.startswith(prefix):
             intent, text = value, text[len(prefix):]
             break
+    if intent is not None:
+        text = re.sub(cfg.ACTION_FILLER, "", text, count=1)
     if text in cfg.CATEGORY_ALIASES:
         return intent, [_condition("category", cfg.CATEGORY_ALIASES[text])]
+    for category in cfg.CATEGORY_ALIASES:
+        if text.startswith(category):
+            budget = _budget_conditions(text[len(category):])
+            if budget is not None:
+                return intent, [_condition("category", cfg.CATEGORY_ALIASES[category]), *budget]
     # An action with an unsupported object is pending as a whole, not partly accepted.
     if intent is not None:
         return None
@@ -73,27 +126,16 @@ def _clause(text: str):
                 strength, text = "hard", text[len(prefix):]
                 break
 
-    budget = re.fullmatch(rf"预算{MONEY}(?:到|至|[-~～]){MONEY}", text)
-    if budget:
-        lo, lm, hi, hm = budget.groups()
-        if (lm is None) != (hm is None):
-            return None  # Do not guess which end inherits a 千/万 multiplier.
-        return None, [_condition("budget", _money(lo, lm), "min", strength or "hard", unit="CNY"),
-                      _condition("budget", _money(hi, hm), "max", strength or "hard", unit="CNY")]
-    for pattern, operator in (
-        (rf"(?:预算)?(?:不超过|最多|上限(?:为|是)?|至多){MONEY}", "max"),
-        (rf"(?:预算)?(?:不少于|至少|下限(?:为|是)?){MONEY}", "min"),
-        (rf"(?:预算)?{MONEY}(?:以内|以下)", "max"),
-        (rf"(?:预算)?{MONEY}(?:以上)", "min"),
-        (rf"预算(?:为|是)?{MONEY}", "max"),
-    ):
-        match = re.fullmatch(pattern, text)
-        if match:
-            return None, [_condition("budget", _money(*match.groups()), operator, strength or "hard", unit="CNY")]
+    budget = _budget_conditions(text, strength)
+    if budget is not None:
+        return None, budget
 
     # Only known feature phrases; unknown negations must not become positive features.
     if text in cfg.FEATURE_ALIASES:
-        return None, [_condition("feature", True, strength=strength or "soft", key=cfg.FEATURE_ALIASES[text])]
+        condition = _condition("feature", True, strength=strength or "soft", key=cfg.FEATURE_ALIASES[text])
+        if condition.key in cfg.CLARIFY_FEATURE_KEYS:
+            return _with_strength(condition, strength)
+        return None, [condition]
     if text.startswith("不要") and text[2:] in cfg.FEATURE_ALIASES and strength is None:
         return None, [_condition("feature", False, key=cfg.FEATURE_ALIASES[text[2:]])]
 
@@ -112,12 +154,18 @@ def _clause(text: str):
         for operator_text, operator in (("不超过", "max"), ("不少于", "min"), ("至少", "min"), ("最多", "max"), ("等于", "eq")):
             match = re.fullmatch(rf"{label}{operator_text}({NUMBER})({'|'.join(map(re.escape, units))})", text)
             if match:
-                value = float(match[1]) * units[match[2]]
+                value = parse_number(match[1]) * units[match[2]]
                 return None, [_condition("parameter", value, operator, strength or "hard", key, cfg.NUMERIC_PARAMETERS[key][0])]
+    laptop = re.fullmatch(rf"能放({NUMBER})(?:英寸|寸)电脑", text)
+    if laptop:
+        return None, [_condition("parameter", parse_number(laptop[1]), "min", strength or "hard", "laptop_inches", "inch")]
     for label, key in cfg.TEXT_ALIASES.items():
         match = re.fullmatch(rf"{label}[:：]?([\w-]{{1,80}})", body)
         if match and not re.search(r"不|和|及|且|也|没|要", match[1]) and not (negative and strength is not None):
-            return None, [_condition("parameter", match[1], "ne" if negative else "eq", "hard" if negative else strength or "soft", key)]
+            condition = _condition("parameter", match[1], "ne" if negative else "eq", "hard" if negative else strength or "soft", key)
+            if not negative and key in cfg.CLARIFY_TEXT_KEYS:
+                return _with_strength(condition, strength)
+            return None, [condition]
     return None
 
 
@@ -189,6 +237,11 @@ class RequirementParser:
         state.revision = turn
 
         def append_condition(value, source):
+            for pending in state.pending:
+                if (pending.reason == "strength_required" and pending.resolved_turn is None
+                        and pending.source.turn < turn
+                        and any(_signature(value) == _signature(option) for option in pending.options)):
+                    pending.resolved_turn = turn
             sig = _signature(value)
             if any(_signature(c) == sig and c.removed_turn is None for c in state.conditions):
                 return
@@ -210,10 +263,14 @@ class RequirementParser:
                 parsed = _clause(quote)
             except (ValidationError, ValueError, OverflowError):
                 parsed = None
-            if parsed is None:
+            if parsed is None or isinstance(parsed, StrengthClarification):
                 if len(state.pending) >= cfg.MAX_ITEMS:
                     raise RequirementUpdateError("待补充记录已达容量上限，请新建需求；本次更新未应用。", "REQUIREMENT_LIMIT")
-                state.pending.append(PendingCondition(id=f"p{turn}-{len(state.pending) + 1}", source=source))
+                state.pending.append(PendingCondition(
+                    id=f"p{turn}-{len(state.pending) + 1}", source=source,
+                    reason="strength_required" if isinstance(parsed, StrengthClarification) else "unsupported_or_ambiguous",
+                    options=parsed.options if isinstance(parsed, StrengthClarification) else [],
+                ))
                 continue
             intent, conditions = parsed
             if intent:
@@ -248,7 +305,10 @@ class RequirementParser:
         missing = [key for key in cfg.REQUIRED_SLOTS if not present[key]]
         unresolved = [p for p in state.pending if p.resolved_turn is None]
         questions = [QUESTIONS[key] for key in missing]
-        if unresolved:
+        for pending in unresolved:
+            if pending.reason == "strength_required":
+                questions.append(f"请确认“{pending.source.quote}”：是必须满足的硬条件，还是优先考虑的软偏好？请选择选项，或完整回复“必须{pending.source.quote}”／“最好{pending.source.quote}”。")
+        if any(p.reason == "unsupported_or_ambiguous" for p in unresolved):
             questions.append("部分表达尚未理解或存在歧义，请逐条明确硬条件／软偏好；处理后显式确认对应待补充项。")
         if conflicts:
             questions.append("条件存在冲突，请确认需要撤销的条件；不会自动放宽。")

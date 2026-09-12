@@ -43,6 +43,7 @@ class ShoppingDecision {
     }
     for (final p in rows(requirements['pending'])) {
       _require(p['id'] is String && object(p['source'])['quote'] is String);
+      strengthOptions(p);
     }
     final assessment = object(data['assessment']);
     _require(
@@ -128,6 +129,47 @@ class ShoppingDecision {
       _require(jsonEncode(report['choices']) == jsonEncode(candidates));
     }
     return ShoppingDecision._(data);
+  }
+
+  /// Pending alternatives are not active conditions; accept only matching values.
+  static List<Map<String, dynamic>> strengthOptions(Map<String, dynamic> item) {
+    final options = rows(item['options'] ?? <dynamic>[]);
+    if (item['reason'] != 'strength_required') {
+      _require(options.isEmpty);
+      return options;
+    }
+    _require(options.length == 2);
+    _require(options
+        .map((c) => c['strength'])
+        .toSet()
+        .containsAll(['hard', 'soft']));
+    final first = options.first;
+    _require(['parameter', 'feature'].contains(first['field']));
+    _require(first['operator'] == 'eq');
+    _require(first['key'] is String && first['unit'] == null);
+    _require(first['field'] == 'feature'
+        ? first['value'] is bool
+        : first['value'] is String);
+    for (final key in ['field', 'operator', 'value', 'key', 'unit']) {
+      _require(first[key] == options.last[key]);
+    }
+    return options;
+  }
+
+  /// Build one explicit, version-checked edit; never relax another active condition.
+  Map<String, dynamic> strengthConfirmation(String pendingId, String strength) {
+    final matches = pending.where((p) => p['id'] == pendingId).toList();
+    _require(matches.length == 1);
+    final options = strengthOptions(matches.single)
+        .where((option) => option['strength'] == strength)
+        .toList();
+    _require(options.length == 1);
+    return {
+      'expected_revision': revision,
+      'confirm_changes': true,
+      'resolve_pending_ids': [pendingId],
+      'additions': [Map<String, dynamic>.from(options.single)],
+    };
   }
 
   int get revision => object(data['requirements'])['revision'] as int;

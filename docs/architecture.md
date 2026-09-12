@@ -66,7 +66,7 @@ Flutter 聊天／确认条件 → chat JSON／SSE → 单会话锁 → SessionSt
 
 `UserRequirements`记录意图、条件及来源原句、条件ID、revision、撤销历史、待澄清分句。条件统一表达field/operator/value/strength/key/unit。完整性判断独立输出缺失信息、冲突和追问。
 
-当前语法是有边界的规则，不是通用NLU：整句分句匹配、明确数值与单位、支持3个品类；无法解析的内容保留并追问，不偷偷忽略。品类／预算及明确数值界限为硬约束；未声明强度的一般品牌／用途／功能／文本参数默认软。最终评测显示这个默认值未必符合用户意图，应在下一轮增加澄清，而不是宣称已解决。
+当前v2语法是有边界的规则，不是通用NLU：整句分句匹配、有限口语、明确数值与单位、支持3个品类；无法解析的内容保留并追问，不偷偷忽略。requirement_numbers仅转换独立数值token；中文整数用规范写法往返检查，模糊省略保持pending，品牌型号原文不变。品类／预算及明确数值界限为硬约束；未声明强度的一般品牌／用途默认软；功能／文本参数生成同值hard/soft备选，明确选择或后一轮完整表述后才转成有效条件。pending是待确认信息，不是检索或排序输入；状态和revision继续由原工作流保存。旧已确认条件不重写。原v1质量评测保留，本轮收尾仅作为工程回归，详见[收尾记录](modules/06a-language-clarification.md)。
 
 `WorkflowState`连同会话快照记录需求、已识别商品、assessment、recommendation（含候选、检索证据、排序）、report、status、trace、errors和重试信息。节点覆盖preferences、intent、requirements、completeness、clarification、retrieval、filtering、ranking、explanation、report、validation。工具封装使检索、过滤、排序、偏好读取、报告边界可追踪；不使用多Agent框架。
 

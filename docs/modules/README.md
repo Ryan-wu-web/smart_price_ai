@@ -14,6 +14,12 @@
 | Phase 4 工作流与记忆 | 4A工作流、4B Flutter、4C明确偏好、4D样例统一、4E会话修复已完成对应工程验证；真机与远端存储不在已验收范围 | [4A](04a-shopping-workflow.md) · [4B](04b-flutter-shopping.md) · [4C](04c-preferences-memory.md) · [4D](04d-sample-unification.md) · [4E](04e-session-null-roundtrip.md) |
 | Phase 5 评测与交付 | 80条冻结合成评测、旧基线重放、工程回归及隔离复现完成；最终33/40，未冒充目标达标 | [交付记录](05-evaluation-delivery.md) · [真实评测](../evaluation.md) · [验收手册](../acceptance.md) |
 
+## 收尾增量
+
+| 模块 | 状态 | 记录 |
+| --- | --- | --- |
+| 06A 语言解析与强度澄清 | 已完成Python／Dart工程回归和Flutter静态／bundle验证；非新独立质量评测，真实模型／真机仍未验收 | [06A记录](06a-language-clarification.md) |
+
 ## 每份记录必须包含
 
 - 目的、实际范围和修改文件。

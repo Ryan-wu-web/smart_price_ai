@@ -69,8 +69,25 @@ class RequirementCondition(ConditionInput):
 class PendingCondition(RequirementModel):
     id: ItemId
     source: RequirementSource
-    reason: Literal["unsupported_or_ambiguous"] = "unsupported_or_ambiguous"
+    reason: Literal["unsupported_or_ambiguous", "strength_required"] = "unsupported_or_ambiguous"
+    # Alternatives only: neither enters conditions/ranking before explicit choice.
+    options: list[ConditionInput] = Field(default_factory=list, max_length=2)
     resolved_turn: int | None = Field(default=None, ge=1, le=MAX_REVISION)
+
+
+    @model_validator(mode="after")
+    def consistent_options(self):
+        if self.reason == "strength_required":
+            if len(self.options) != 2 or {c.strength for c in self.options} != {"hard", "soft"}:
+                raise ValueError("Strength clarification requires hard and soft alternatives")
+            first, second = self.options
+            if (first.field not in ("parameter", "feature") or first.operator != "eq"
+                    or (first.field == "parameter" and first.key not in TEXT_PARAMETERS)
+                    or first.model_dump(exclude={"strength"}) != second.model_dump(exclude={"strength"})):
+                raise ValueError("Clarification alternatives must describe the same condition")
+        elif self.options:
+            raise ValueError("Unsupported wording must not invent clarification alternatives")
+        return self
 
 
 class UserRequirements(RequirementModel):
@@ -130,7 +147,7 @@ class RequirementConflict(RequirementModel):
 
 
 class RequirementParseResponse(RequirementModel):
-    parser_version: Literal["requirements-rules-v1"] = PARSER_VERSION
+    parser_version: Literal["requirements-rules-v1", "requirements-rules-v2"] = PARSER_VERSION
     mode: Literal["deterministic_rules"] = "deterministic_rules"
     state: UserRequirements
     status: Literal["ready", "needs_clarification", "conflict"]

@@ -352,6 +352,33 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _confirmStrength(ShoppingDecision decision,
+      Map<String, dynamic> pending, String strength) async {
+    final hard = strength == 'hard';
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(hard ? '确认为硬条件' : '确认为软偏好'),
+        content: Text('${ShoppingDecision.object(pending['source'])['quote']}\n'
+            '${hard ? '不满足或证据不足的商品会被排除，可能没有候选。' : '仅用于偏好排序，不保证每件候选都满足；未满足情况会明确展示。'}'
+            '\n其他已确认条件保持不变。'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('确认并重新筛选')),
+        ],
+      ),
+    );
+    if (accepted == true && mounted) {
+      await _sendMessage('应用已确认的条件调整',
+          shopping:
+              decision.strengthConfirmation(pending['id'] as String, strength));
+    }
+  }
+
   Future<void> _openPreferences() async {
     final options = await Navigator.push<Map<String, dynamic>>(
         context,
@@ -718,6 +745,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             _confirmChange(decision, condition, pending: false),
                         onDismiss: (condition) =>
                             _confirmChange(decision, condition, pending: true),
+                        onChooseStrength: (pending, strength) =>
+                            _confirmStrength(decision, pending, strength),
                         onReport: decision.hasReport
                             ? () => _openGroundedReport(decision)
                             : null),

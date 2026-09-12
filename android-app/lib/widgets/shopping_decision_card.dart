@@ -9,6 +9,8 @@ class ShoppingDecisionCard extends StatelessWidget {
   final bool editable;
   final void Function(Map<String, dynamic> condition)? onRemove;
   final void Function(Map<String, dynamic> pending)? onDismiss;
+  final void Function(Map<String, dynamic> pending, String strength)?
+      onChooseStrength;
   final VoidCallback? onReport;
   const ShoppingDecisionCard(
       {super.key,
@@ -16,6 +18,7 @@ class ShoppingDecisionCard extends StatelessWidget {
       this.editable = false,
       this.onRemove,
       this.onDismiss,
+      this.onChooseStrength,
       this.onReport});
 
   @override
@@ -57,19 +60,7 @@ class ShoppingDecisionCard extends StatelessWidget {
                 ),
             ],
           ),
-          for (final p in d.pending)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title:
-                  Text('待澄清：${ShoppingDecision.object(p['source'])['quote']}'),
-              subtitle: const Text('这句话尚未完整理解，会阻止推荐。可明确确认忽略，再重新表述。'),
-              trailing: IconButton(
-                  tooltip: '确认忽略这句话',
-                  onPressed: editable && onDismiss != null
-                      ? () => onDismiss!(p)
-                      : null,
-                  icon: const Icon(Icons.help_outline)),
-            ),
+          for (final p in d.pending) _pendingCondition(p),
           if (d.status == 'no_candidates')
             const Text('不会自动放宽。请展开已确认条件，明确确认要撤销的条件。'),
           if (rec != null && rec['constraint_impacts'] is List)
@@ -107,6 +98,37 @@ class ShoppingDecisionCard extends StatelessWidget {
         ]),
       ),
     );
+  }
+
+  Widget _pendingCondition(Map<String, dynamic> pending) {
+    final options = ShoppingDecision.strengthOptions(pending);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title:
+            Text('待澄清：${ShoppingDecision.object(pending['source'])['quote']}'),
+        subtitle: Text(options.isEmpty
+            ? '这句话尚未完整理解，会阻止推荐。可明确确认忽略，再重新表述。'
+            : '条件内容已识别，但尚未用于筛选或排序。请确认它有多重要。'),
+        trailing: IconButton(
+            tooltip: '确认忽略这句话',
+            onPressed: editable && onDismiss != null
+                ? () => onDismiss!(pending)
+                : null,
+            icon: const Icon(Icons.help_outline)),
+      ),
+      if (options.isNotEmpty)
+        Wrap(spacing: 8, children: [
+          for (final option in options)
+            OutlinedButton(
+              onPressed: editable && onChooseStrength != null
+                  ? () =>
+                      onChooseStrength!(pending, option['strength'] as String)
+                  : null,
+              child: Text(option['strength'] == 'hard' ? '必须满足' : '优先考虑'),
+            ),
+        ]),
+    ]);
   }
 
   Widget _candidate(Map<String, dynamic> row) {

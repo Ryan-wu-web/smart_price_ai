@@ -277,13 +277,13 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 - 503：索引不可用／检索内部失败，`detail={"code":"RETRIEVAL_UNAVAILABLE","message":"样例商品检索暂时不可用，请稍后重试。"}`，不返回堆栈或内部异常文本。
 - 每worker初始化一次；最多20,000片段、每路200,000词项，超过限制时拒绝建立索引而非只索引前一部分。
 - 索引失败不阻断已有目录／识别／对话；目录失败时搜索也503。`/health`不是索引就绪检查。
-- 无查询缓存、热更新或向量持久化；重启重建。未接入聊天、Flutter和报告，也不自动存入用户偏好。
+- 无查询缓存、热更新或向量持久化；重启重建。已通过购物工作流接入聊天、Flutter和有据报告；检索本身不自动存入用户偏好。
 
 
 ## 结构化需求与增量编辑（Phase 3A）
 
 `POST /api/v1/requirements/parse` 是新增的独立JSON接口；不替换 `/filter` 或 `/chat`，也不发送SSE。
-解析器 `requirements-rules-v1` 没有模型／检索／数据库依赖，无外部网络、重试、Prompt或工具执行。
+当前解析器 `requirements-rules-v2`（兼容读取v1响应和旧会话）没有模型／检索／数据库依赖，无外部网络、重试、Prompt或工具执行。
 输入、结构化编辑、携带状态和最终输出均经Pydantic校验，禁止额外字段、非有限数值及布尔冒充金额。
 
 ### 输入与字段定义
@@ -330,6 +330,8 @@ data: {"version":1,"type":"end","seq":4,"session_id":"example-session","success"
 
 - 条件有稳定ID和 `source={kind,turn,quote}`。rule来源保留用户分句原文；user_edit来源保留提交的结构化值。仅本接口直接识别或用户显式提交的有效条件列入confirmed，不读取或确认模型摘要中的推测。
 - 撤销记录使用 `removed_turn`，已处理待补充项使用 `resolved_turn`；返回的硬／软条件视图只含当前有效项。
+- pending.reason为`unsupported_or_ambiguous`时options为空；为`strength_required`时options必须是相同field/key/operator/value/unit的hard、soft两项，只允许文本参数／布尔功能eq。备选不是有效条件；确认前状态为needs_clarification。
+- 确认按钮提交当前`expected_revision`、`confirm_changes:true`、`resolve_pending_ids:[待澄清ID]`及`additions:[所选完整条件]`到购物聊天；独立parse接口用previous而非expected_revision。自然语言完整回复“必须颜色黑色”或“最好颜色黑色”也会处理此前同值的强度pending；不自动处理未知分句、不同值或本轮新pending。
 - 下一轮默认保留先前条件和待补充项；相同有效条件去重；不同条件并存，不默认用最后一条覆盖。
 - 后一轮明确的意图覆盖当前意图；旧预算、品类等条件不会因此清除。
 - 最多1000轮，条件记录和待补充记录各最多128条（含已撤销／已处理）；超限明确拒绝，不截断历史。
@@ -503,11 +505,12 @@ SSE仍为v1，`status.node`新增 intent/requirements/completeness/clarification
 - Flutter对比列表明确展示样例区间及证据；取消条件需要用户点击；空历史不画零价曲线。旧报告只显示服务端查库结果，未核验的旧reportData不再作为商品事实展示。
 
 
-## 评测发现的调用注意（Phase 5）
+## 收尾后的调用注意（v2）
 
-- 意图采用有限词表：“帮我比较两款耳机”“帮我出一份购物报告”等口语不保证识别；当前可用“对比耳机”“生成报告”。未知句会追问，不应由客户端隐藏。
-- “耳机控制在五百块以内”“背包，最多六百”等中文数词／别名未覆盖。请核对提取条件，而不是只看最终候选。
-- 未标“必须”的颜色／防水等级等文本参数默认soft；若界面显示soft，与用户真正的硬条件不同，应明确确认后再请求。
+- 意图仍为有限整句规则，已支持“帮我比较两款耳机”“请帮我出一份购物报告”“能解释一下这款商品为什么合适吗”；未知尾部保留追问，不做关键词命中后丢弃。
+- 已支持“耳机控制在五百块以内”、规范中文整数／小数、全角数字和“能放十五点六寸电脑”。“三百五”“三到五百”不猜省略单位；千分位暂不解析；“背包”不自动视为双肩包。数字规范化不修改品牌型号原文。
+- 未标强度的颜色／防水等级等文本参数和正向功能先返回强度pending，用户确认后再过滤排序。品牌／用途仍默认soft；明确数值界限默认hard；ne排斥仅hard。旧已确认条件不被迁移重写。
+- Phase 5文档中的v1失败与分数是冻结历史；[v2收尾回归](modules/06a-language-clarification.md)不是新的独立质量评测。
 - 识别实体没有自动映射到商品ID；旧报告必须用knowledge／compare返回的真实目录ID，例如`sample-audio-01`，不是凭名称或客户端报价生成。
 - 会话序列化保留未知参数的显式null；旧已损坏文件仍返回409，不会自动伪造缺失参数修复。
 - 无模型密钥可使用shopping；健康检查不证明模型有效。原始指标及可复现命令见[评测说明](evaluation.md)。
