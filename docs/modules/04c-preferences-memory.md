@@ -13,7 +13,7 @@
 
 ## Redis／PostgreSQL评估及取舍
 
-当前事实：依赖清单已有redis、SQLAlchemy、psycopg2，但原主流程并未使用它们。此次不为了名词堆叠引入远端存储。
+当前事实：默认应用只使用本地文件＋标准库SQLite。未接入的redis、SQLAlchemy、psycopg2客户端已在2026-09-13清理，不再随默认后端安装；可选Compose服务仍只用于后续适配评估。
 
 | 方案 | 适用角色 | 当前结论 |
 | --- | --- | --- |

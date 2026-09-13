@@ -48,6 +48,14 @@ Get-FileHash D:\smart_price_ai-validation\cleanup\recheck.json
 
 ## 限制、回退与唯一下一步
 
-本轮可执行的代码整理完成并验证；物理删除仍受策略限制。用户在本地解除删除限制或自行核对处理上表残留后，核验Git差异并完成清理收口。不要删除其他同名数据／平台目录，也不要把依赖包中的tests当本项目测试批量移除。
+截至2026-09-12，本轮代码整理已经完成并验证，但物理删除仍受当时的执行策略限制。该限制已在下方2026-09-13收口中解除；清理始终限定于核验后的项目路径，没有批量删除依赖包中的tests或其他同名目录。
 
 代码改动可按本模块提交单独回退，不需要迁移数据；06A的会话Schema回退限制仍适用。真实模型／真机／Docker仍需按[验收手册](../acceptance.md)执行，远端Redis／PostgreSQL适配没有实现；本轮不声称“全部Phase已验收”或“项目已无任何死代码”。
+
+## 2026-09-13 本地垃圾清理收口
+
+用户明确授权后，已物理删除此前受限的应用源码字节码缓存、6个空测试／工具目录，以及无运行时引用的`backend/app/models/database.py`。同时删除Flutter的`.dart_tool`、`build`、插件索引及各平台临时生成文件；这些内容均可由工具重新生成，不属于源码。Flutter验证期间重新生成的缓存已在验证完成后再次清理。
+
+旧ORM删除后，默认后端不再需要未接入运行链路的`SQLAlchemy`、`psycopg2-binary`和`redis` Python包，已从`backend/requirements.txt`移除。Redis／PostgreSQL的Compose profile和配置占位仍保留为未来适配评估，不代表当前已经实现远端存储。`.venv`、业务源码、平台工程、样例商品库、会话目录和SQLite数据均未删除。
+
+本次使用精确路径的Git清理命令，未执行全仓库通配删除。清理后重新核验应用导入、OpenAPI生成、Python语法、Flutter静态分析和Git差异；具体结果以本次执行输出为准。
